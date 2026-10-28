@@ -13,8 +13,8 @@ import {
   findItemWithListStatus,
   insertItem,
   renameItemRow,
-} from '@/data/repositories/itemsRepository';
-import { findListById, touchList } from '@/data/repositories/listsRepository';
+} from '@/infrastructure/repositories/itemsRepository';
+import { findListById, touchList } from '@/infrastructure/repositories/listsRepository';
 import { AppError } from '@/lib/errors';
 import { guardError, itemNameError } from '@/useCases/guards';
 import type { UseCaseDeps } from '@/useCases/types';

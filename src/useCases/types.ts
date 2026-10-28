@@ -1,4 +1,4 @@
-import type { DatabaseManager } from '@/data/databaseManager';
+import type { DatabaseManager } from '@/infrastructure/databaseManager';
 import type { Clock } from '@/lib/clock';
 import type { IdGenerator } from '@/lib/ids';
 

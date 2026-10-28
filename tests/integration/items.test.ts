@@ -1,4 +1,4 @@
-import { DatabaseManager } from '@/data/databaseManager';
+import { DatabaseManager } from '@/infrastructure/databaseManager';
 import { addItem, deleteItem, renameItem, restoreItem } from '@/useCases/items';
 import { createList, getListDetail } from '@/useCases/lists';
 import { NodeSqliteAdapter } from './nodeSqliteAdapter';

@@ -25,7 +25,7 @@ Alrededor de eso:
 | SQLite es la única fuente de verdad | No se cachean listas en un store global; se lee al enfocar y se actualiza localmente tras una escritura. |
 | La UI es delgada | `app/` compone pantallas; los hooks y casos de uso hacen el trabajo. |
 | El dominio es puro | Reglas, validaciones y formato de fechas sin React, Expo ni SQL. |
-| Los datos están aislados | Solo `src/data` contiene SQL. |
+| Los datos están aislados | Solo `src/infrastructure` contiene SQL. |
 | Las transacciones son explícitas | `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK`; no se usan los helpers de transacción de Expo. |
 | La consistencia es estructural | Todas las operaciones pasan por una cola serial; las lecturas de foco esperan a las escrituras pendientes. |
 | Se evita la ceremonia | Sin ORM, sin Redux, sin TanStack Query, sin Reanimated, sin NativeWind. |
@@ -99,7 +99,7 @@ flowchart TD
 | `src/features/*/hooks` | Estado de pantalla, carga al enfocar, llamada a casos de uso. | SQL directo. |
 | `src/useCases` | Validación, coordinación, transacciones, captura de hora, errores tipados. | JSX, navegación, estilos. |
 | `src/domain` | Tipos, estados, reglas puras, validadores, progreso, formato de fechas. | Efectos secundarios, React, SQL. |
-| `src/data` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas. | Reglas de UI. |
+| `src/infrastructure` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas. | Reglas de UI. |
 | `src/lib` | `Clock`, generador de IDs, errores, hápticos, instrumentación. | Lógica de negocio. |
 | `src/theme` | Tokens de color, tipografía, espaciado, radios. | Componentes. |
 | `src/strings` | Todos los textos visibles en español. | Lógica. |
@@ -135,7 +135,7 @@ listapp/
     useCases/                    # lists, shopping, history
     domain/                      # list, item, purchase, lifecycle,
                                  # validation, progress, date
-    data/
+    infrastructure/              # Todo el acceso a SQLite y al almacenamiento local
       databaseManager.ts         # open / boot / close / estado
       serialQueue.ts             # cola única
       sqlDatabase.ts             # puerto: exec, run, all, get, transaction
@@ -163,7 +163,7 @@ listapp/
 **Reglas:**
 
 - `app/` solo compone; no contiene SQL ni lógica de negocio.
-- `src/data` es el único lugar con SQL.
+- `src/infrastructure` es el único lugar con SQL; el resto de la app consume casos de uso.
 - Los repositorios reciben un `Tx`; no guardan una conexión global.
 - Los casos de uso son los únicos que llaman a `read`/`mutate`.
 - Se usa el alias `@/*` para imports absolutos.

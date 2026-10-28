@@ -1,4 +1,4 @@
-import { getDatabase } from '@/data/database';
+import { getDatabase } from '@/infrastructure/database';
 import { systemClock } from '@/lib/clock';
 import { generateId } from '@/lib/ids';
 import type { UseCaseDeps } from '@/useCases/types';

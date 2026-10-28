@@ -1,27 +1,13 @@
-import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { getDatabase } from '@/data/database';
-import { runDatabaseDiagnostics, type DatabaseDiagnostics } from '@/data/diagnostics';
+import { useDatabaseDiagnostics } from '@/features/dev/useDatabaseDiagnostics';
 import { es } from '@/strings/es';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 /** Panel temporal de M0 para verificar PRAGMAs y transacciones en el APK. */
 export function DatabaseDiagnosticsPanel() {
-  const [result, setResult] = useState<DatabaseDiagnostics | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void runDatabaseDiagnostics(getDatabase()).then((diagnostics) => {
-      if (active) {
-        setResult(diagnostics);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const result = useDatabaseDiagnostics();
 
   return (
     <View style={styles.card}>

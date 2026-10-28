@@ -1,4 +1,4 @@
-import type { DatabaseManager } from '@/data/databaseManager';
+import type { DatabaseManager } from '@/infrastructure/databaseManager';
 import { AppError } from '@/lib/errors';
 
 export interface DatabaseDiagnostics {

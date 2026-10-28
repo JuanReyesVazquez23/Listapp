@@ -12,6 +12,17 @@ App móvil Android para crear listas de compras, marcar artículos durante la co
 - Expo Router
 - EAS Build para generar el APK
 
+## Estructura
+
+- `app/`: rutas, layouts y pantallas de Expo Router.
+- `src/infrastructure/`: todo el acceso a SQLite, migraciones, repositorios y adaptadores. Tiene su propio [README](src/infrastructure/README.md).
+- `src/domain/`: tipos y reglas de negocio puras, sin React ni SQL.
+- `src/useCases/`: operaciones que orquestan dominio e infraestructura.
+- `src/features/`: hooks de estado de pantalla.
+- `src/components/`: componentes visuales reutilizables.
+- `src/theme/` y `src/strings/`: tokens de diseño y textos en español.
+- `tests/`: pruebas unitarias, de integración y de componente.
+
 ## Documentación
 
 - [Índice de documentación](docs/README.md)

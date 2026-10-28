@@ -5,8 +5,8 @@ import {
   mapItemRow,
   type ItemRow,
   type ItemWithListRow,
-} from '@/data/repositories/rows';
-import type { SqlReader, Tx } from '@/data/sqlDatabase';
+} from '@/infrastructure/repositories/rows';
+import type { SqlReader, Tx } from '@/infrastructure/sqlDatabase';
 
 export interface InsertItemInput {
   id: string;

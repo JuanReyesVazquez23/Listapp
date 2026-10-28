@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { getDatabase } from '@/data/database';
-import type { DatabaseState } from '@/data/databaseManager';
+import { getDatabase } from '@/infrastructure/database';
+import type { DatabaseState } from '@/infrastructure/databaseManager';
 
 export type BootStatus =
   | { status: 'booting' }

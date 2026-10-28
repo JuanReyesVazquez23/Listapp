@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DatabaseManager } from '@/data/databaseManager';
+import { DatabaseManager } from '@/infrastructure/databaseManager';
 import type { UseCaseDeps } from '@/useCases/types';
 import { NodeSqliteAdapter } from './nodeSqliteAdapter';
 

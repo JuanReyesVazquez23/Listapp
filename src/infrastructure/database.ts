@@ -1,5 +1,5 @@
-import { DatabaseManager } from '@/data/databaseManager';
-import { ExpoSqliteAdapter } from '@/data/expoSqliteAdapter';
+import { DatabaseManager } from '@/infrastructure/databaseManager';
+import { ExpoSqliteAdapter } from '@/infrastructure/expoSqliteAdapter';
 
 export const DATABASE_NAME = 'listapp.db';
 

@@ -5,8 +5,8 @@ import {
   mapListSummaryRow,
   type ListRow,
   type ListSummaryRow,
-} from '@/data/repositories/rows';
-import type { SqlReader, Tx } from '@/data/sqlDatabase';
+} from '@/infrastructure/repositories/rows';
+import type { SqlReader, Tx } from '@/infrastructure/sqlDatabase';
 
 export interface InsertListInput {
   id: string;

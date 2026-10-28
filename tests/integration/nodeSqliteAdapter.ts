@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import type { SqlDatabase, SqlParams, SqlRunResult } from '@/data/sqlDatabase';
+import type { SqlDatabase, SqlParams, SqlRunResult } from '@/infrastructure/sqlDatabase';
 
 /**
  * Adaptador de test sobre `node:sqlite`.

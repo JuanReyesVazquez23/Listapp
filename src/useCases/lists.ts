@@ -8,8 +8,8 @@ import {
   findListSummaries,
   insertList,
   renameListRow,
-} from '@/data/repositories/listsRepository';
-import { findItemsByList } from '@/data/repositories/itemsRepository';
+} from '@/infrastructure/repositories/listsRepository';
+import { findItemsByList } from '@/infrastructure/repositories/itemsRepository';
 import { AppError } from '@/lib/errors';
 import { guardError, listNameError } from '@/useCases/guards';
 import type { UseCaseDeps } from '@/useCases/types';

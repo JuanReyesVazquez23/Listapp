@@ -1,7 +1,7 @@
 import type { SQLiteBindValue, SQLiteDatabase } from 'expo-sqlite';
 import { openDatabaseAsync } from 'expo-sqlite';
 
-import type { SqlDatabase, SqlParams, SqlRunResult } from '@/data/sqlDatabase';
+import type { SqlDatabase, SqlParams, SqlRunResult } from '@/infrastructure/sqlDatabase';
 import { AppError } from '@/lib/errors';
 
 /**

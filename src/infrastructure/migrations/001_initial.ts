@@ -1,4 +1,4 @@
-import type { Tx } from '@/data/sqlDatabase';
+import type { Tx } from '@/infrastructure/sqlDatabase';
 
 export interface Migration {
   version: number;

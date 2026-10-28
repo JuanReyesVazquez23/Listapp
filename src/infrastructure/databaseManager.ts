@@ -1,7 +1,7 @@
-import { LATEST_SCHEMA_VERSION, migrations } from '@/data/migrations';
-import type { Migration } from '@/data/migrations/001_initial';
-import { SerialQueue } from '@/data/serialQueue';
-import type { SqlDatabase, SqlReader, Tx } from '@/data/sqlDatabase';
+import { LATEST_SCHEMA_VERSION, migrations } from '@/infrastructure/migrations';
+import type { Migration } from '@/infrastructure/migrations/001_initial';
+import { SerialQueue } from '@/infrastructure/serialQueue';
+import type { SqlDatabase, SqlReader, Tx } from '@/infrastructure/sqlDatabase';
 import { AppError, isAppError } from '@/lib/errors';
 
 export type DatabaseState = 'idle' | 'booting' | 'ready' | 'failed' | 'broken';
