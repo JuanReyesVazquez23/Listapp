@@ -6,15 +6,15 @@ La arquitectura está cerrada. Lo que falta son decisiones de producto y de ento
 
 Hay tres niveles:
 
-1. **Bloqueantes de M0:** sin ellas no se puede generar el primer APK ni identificar la app. No tienen un valor por defecto seguro.
+1. **Bloqueantes de identidad y entorno:** sin ellas no se puede generar el primer APK ni identificar la app. No tienen un valor por defecto seguro.
 2. **Decisiones con valor propuesto:** ya están aplicadas en la documentación. Si no dices lo contrario, se quedan así.
 3. **Fuera del MVP:** no requieren acción; están listadas para que no se confundan con olvidos.
 
 Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 
-## 2. Decisiones bloqueantes de M0
+## 2. Decisiones bloqueantes (cerradas)
 
-**D-01, D-02 y D-03 confirmadas el 28 de octubre de 2026.** No quedan decisiones bloqueantes.
+**D-01, D-02 y D-03 confirmadas el 28 de octubre de 2026.** No quedan decisiones bloqueantes. El primer APK se compilará al cerrar M3.
 
 | ID | Decisión | Valor propuesto | Por qué bloquea | Doc |
 |---|---|---|---|---|
@@ -78,7 +78,7 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 
 No hace falta que las confirmes; están en la documentación y se aplican salvo que decidas cambiarlas:
 
-- El primer APK se genera en **M0**, antes de la funcionalidad completa.
+- El primer APK se genera al cerrar **M3**, no en M0.
 - No se escribe código de la app hasta confirmar D-01, D-02 y D-03.
 - No se usa ORM, store global, Reanimated, NativeWind, librería de UI, `Intl` en la UI ni librería de fechas.
 - Las transacciones son explícitas y todas las operaciones pasan por una cola serial.

@@ -2,7 +2,7 @@
 
 App móvil Android para crear listas de compras, marcar artículos durante la compra y guardar cada compra en un historial con fecha, hora y supermercado.
 
-**Estado actual: M0 en curso. Base de Expo, SQLite y navegación creadas; el primer APK está pendiente de compilar con EAS.**
+**Estado actual: M0 y M1 completados. Listas y artículos funcionan con persistencia local; el primer APK se generará al cerrar M3.**
 
 ## Stack
 
@@ -32,8 +32,8 @@ App móvil Android para crear listas de compras, marcar artículos durante la co
 - El historial guarda fecha y hora local del momento de finalizar, además de UTC para ordenar.
 - El supermercado es texto libre con sugerencias de compras anteriores.
 - Verde y blanco, tema claro, español, Android vertical.
-- El primer APK se genera en el hito M0, antes de completar la funcionalidad.
+- El primer APK se genera al final del hito M3, cuando el flujo principal ya es funcional.
 
 ## Siguiente paso
 
-Las decisiones bloqueantes están confirmadas: `com.jeanx.listapp`, cuenta personal de EAS con keystore gestionado por EAS, y dispositivo Android 13+ o emulador API 34. Siguiente paso: hito M0 (scaffold de Expo, configuración de EAS y primer APK de prueba). El resto de decisiones ya tiene un valor por defecto documentado.
+Las decisiones bloqueantes están confirmadas: `com.jeanx.listapp`, cuenta personal de EAS con keystore gestionado por EAS, y dispositivo Android 13+ o emulador API 34. M0 y M1 están cerrados. Siguiente paso: hito M2 (empezar compra, marcar y desmarcar artículos, progreso, recuperación y cancelación). El primer APK se compila al terminar M3.

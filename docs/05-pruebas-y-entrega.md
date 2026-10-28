@@ -234,7 +234,7 @@ Opcional en el MVP, recomendada cuando el directorio sea un repo git:
 - E2E Maestro en emulador como job nocturno o manual por coste.
 - EAS Build manual o en tag.
 
-El repo aún no es git; inicializarlo antes de M0.
+El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/Listapp`).
 
 ## 9. Compilación del APK
 
@@ -285,7 +285,7 @@ El repo aún no es git; inicializarlo antes de M0.
 8. Smoke test del flujo completo.
 9. Guardar el keystore y las credenciales.
 
-**Primer build en M0.** No se espera al final: valida cuenta, credenciales, SDK, paquete y entorno antes de que haya funcionalidad que perder.
+**Primer build al cerrar M3.** Se compila cuando el flujo principal ya es funcional, para validar cuenta, credenciales, SDK, paquete y entorno sobre una app usable.
 
 ### 9.5 Versionado
 
@@ -299,10 +299,10 @@ El repo aún no es git; inicializarlo antes de M0.
 
 | Hito | Contenido | Criterio de salida |
 |---|---|---|
-| **M0 — Base y APK** | Scaffold Expo 58, TypeScript estricto, Expo Router, tokens, `DatabaseManager`, migración v1, EAS `preview`, primer APK. | El APK instala, abre y muestra una pantalla vacía; `boot()` y PRAGMAs verificados; build reproducible. |
-| **M1 — Listas y artículos** | CRUD de listas e ítems, validación, persistencia, estados vacíos. | AC-01, AC-02, AC-03; tests unitarios/integración/componente. |
+| **M0 — Base** | Scaffold Expo 58, TypeScript estricto, Expo Router, tokens, `DatabaseManager`, migración v1. | `boot()` y PRAGMAs verificados; tests de integración en verde; bundle de Android correcto. |
+| **M1 — Listas y artículos** | CRUD de listas e ítems, validación, persistencia, estados vacíos, deshacer de 5 s. | AC-01, AC-02, AC-03; tests unitarios, integración y componente. |
 | **M2 — Compra** | Empezar, marcar/desmarcar, progreso, añadir, recuperación, cancelar. | AC-04, AC-05, AC-11, AC-20; E2E de recuperación. |
-| **M3 — Finalizar e historial** | Modal, supermercado, 0 marcados, transacción, historial, detalle, eliminar. | AC-06 a AC-10; E2E principal. |
+| **M3 — Finalizar e historial** | Modal, supermercado, 0 marcados, transacción, historial, detalle, eliminar. **Primer APK `preview`.** | AC-06 a AC-10; E2E principal; APK instalado y probado en dispositivo. |
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
@@ -322,10 +322,10 @@ El repo aún no es git; inicializarlo antes de M0.
 
 | Riesgo | Mitigación |
 |---|---|
-| Cuenta EAS confirmada, pero el primer build y el keystore aún no se han probado. | Verificar en M0 antes de implementar. |
-| Paquete Android sin confirmar. | Confirmar en `07-decisiones-abiertas.md`. |
+| Cuenta EAS confirmada, pero el primer build y el keystore aún no se han probado. | Verificar al cerrar M3, antes de entregar el APK. |
+| Paquete Android sin confirmar. | Confirmado: `com.jeanx.listapp`. |
 | Maestro no funciona en Windows nativo. | WSL2 o E2E manual; documentar. |
-| `expo-sqlite` con transacciones manuales no se comporta como se espera. | Smoke test en M0; si falla, reconsiderar el contrato antes de escribir la app. |
+| `expo-sqlite` con transacciones manuales no se comporta como se espera. | Contrato validado con `node:sqlite`; smoke test en el primer APK (M3); si falla, reconsiderar antes de la entrega. |
 | Pérdida de datos al desinstalar. | Aviso; export JSON en v1.1. |
 | Historial sin paginación. | `SectionList`; v1.1 si el volumen lo exige. |
 | Reloj del dispositivo incorrecto. | Documentado; no hay servidor. |

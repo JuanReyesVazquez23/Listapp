@@ -30,7 +30,7 @@ Alrededor de eso:
 | La consistencia es estructural | Todas las operaciones pasan por una cola serial; las lecturas de foco esperan a las escrituras pendientes. |
 | Se evita la ceremonia | Sin ORM, sin Redux, sin TanStack Query, sin Reanimated, sin NativeWind. |
 | La accesibilidad no es opcional | Objetivos de 48 dp, roles y estados accesibles desde los primeros componentes. |
-| El APK llega pronto | El primer build de EAS se hace en M0, no al final. |
+| El APK llega pronto | El primer build de EAS se hace al cerrar M3, con el flujo principal ya funcional. |
 
 ## 3. Stack y decisiones técnicas
 
@@ -414,7 +414,7 @@ No se usa `SQLiteProvider`: el ciclo de vida lo controla `DatabaseManager`, para
 | Java | **JDK 17+** para Maestro. El Java 8 local no sirve para Android. |
 | Android | `platform-tools` (`adb`) y un dispositivo físico Android 13+ (API 33/34) o emulador API 34. |
 | EAS | Cuenta personal de Expo/EAS confirmada; keystore gestionado por EAS (D-02). |
-| Git | El directorio aún no es un repo; inicializar antes de M0. |
+| Git | Repositorio inicializado en GitHub (`JuanReyesVazquez23/Listapp`), rama `main`. |
 
 **Camino principal:** EAS Build en la nube para el APK; dispositivo físico para instalar y probar; JDK 17 + `platform-tools` para Maestro y `adb`.
 
@@ -438,7 +438,7 @@ Pasos:
 6. Smoke test del flujo completo.
 7. Guardar el keystore y las credenciales de EAS.
 
-El primer build se hace en **M0**, antes de implementar toda la funcionalidad, para descubrir problemas de cuenta, credenciales, SDK o entorno.
+El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de lista, compra e historial, para validar cuenta, credenciales, SDK, paquete y entorno sobre una app usable.
 
 ### 11.3 Android
 
@@ -464,10 +464,10 @@ El primer build se hace en **M0**, antes de implementar toda la funcionalidad, p
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| El contrato de transacción no se ha probado en un dispositivo real. | Alto | Smoke test en M0; tests de integración con `node:sqlite`; prueba de cascada y rollback. |
-| `expo-sqlite` puede comportarse distinto al cerrar/reabrir con WAL. | Medio | No se reabre en caliente en v1; se pide reiniciar. Probar en M0. |
+| El contrato de transacción no se ha probado en un dispositivo real. | Alto | Smoke test al generar el primer APK (M3); tests de integración con `node:sqlite`; prueba de cascada y rollback. |
+| `expo-sqlite` puede comportarse distinto al cerrar/reabrir con WAL. | Medio | No se reabre en caliente en v1; se pide reiniciar. Probar el primer APK en dispositivo (M3). |
 | Maestro en Windows requiere JDK 17 y `adb`; puede necesitar WSL2. | Medio | Documentar entorno; si falla, E2E manual y Maestro en WSL2. |
-| Cuenta EAS confirmada; faltan keystore y primer build por verificar. | Alto | Verificar en M0 antes de escribir funcionalidad. |
+| Cuenta EAS confirmada; faltan keystore y primer build por verificar. | Alto | Verificar al cerrar M3, antes de la entrega del APK. |
 | Pérdida de datos al desinstalar. | Medio | Aviso explícito; export JSON en v1.1. |
 | Crecimiento del historial sin paginación. | Bajo | `SectionList` virtualiza; test con 300 filas; paginación en v1.1 si hace falta. |
 | Texto ampliado o TalkBack rompen el layout. | Medio | 48 dp, sin alturas fijas, checklist manual y RNTL. |

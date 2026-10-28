@@ -1,6 +1,6 @@
 # Listapp — Documentación de arquitectura
 
-**Fase 1: implementación iniciada. M0 (base, SQLite y primer APK) en curso.**
+**Fase 1: implementación en curso. M0 (base y SQLite) y M1 (listas y artículos) completados; el primer APK llega al cerrar M3.**
 
 Esta documentación define qué se va a construir, cómo se organiza, qué datos guarda, cómo se navega, cómo se prueba y cómo se entrega el APK. Es la base para empezar a implementar sin improvisar decisiones estructurales.
 
@@ -24,7 +24,7 @@ Esta documentación define qué se va a construir, cómo se organiza, qué datos
 - **Datos:** dos tablas (`lists` e `items`); una lista completada es la compra histórica.
 - **Consistencia:** una conexión SQLite, cola serial para todas las operaciones y transacciones explícitas.
 - **Diseño:** verde y blanco, tema claro, componentes propios, fuente del sistema, accesibilidad AA.
-- **Entrega:** primer APK en M0; APK final tras pruebas manuales y E2E.
+- **Entrega:** primer APK al cerrar M3; APK final tras pruebas manuales y E2E.
 
 ## Cómo se tomó la decisión
 
@@ -37,8 +37,8 @@ Se usó el protocolo de los agentes del proyecto:
 5. `reviser` los resolvió con correcciones de contrato de transacción, mutaciones, recuperación y pruebas.
 6. El orquestador consolidó la decisión y corrigió seis puntos discutibles (ver `06-agentes-y-proceso.md`).
 
-**Veredicto:** aprobada con reservas. Las reservas están identificadas y tienen mitigación o quedan como riesgo explícito; no bloquean el inicio de M0.
+**Veredicto:** aprobada con reservas. Las reservas están identificadas y tienen mitigación o quedan como riesgo explícito; no bloquearon el inicio de M0.
 
 ## Regla de esta fase
 
-No se implementa código hasta que se confirmen las decisiones bloqueantes. **D-01, D-02 y D-03 ya están confirmadas**; M0 puede comenzar. El resto de decisiones tiene un valor por defecto documentado y puede aplicarse sin bloquear el diseño.
+No se implementa código hasta que se confirmen las decisiones bloqueantes. **D-01, D-02 y D-03 están confirmadas**; M0 y M1 están cerrados y la implementación continúa con M2. El resto de decisiones tiene un valor por defecto documentado y puede aplicarse sin bloquear el diseño.

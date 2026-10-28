@@ -39,6 +39,13 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="lista/nueva"
+            options={{
+              presentation: 'modal',
+              title: es.newList.title,
+            }}
+          />
           <Stack.Screen name="+not-found" options={{ title: es.notFound.header }} />
         </Stack>
       ) : state.status === 'failed' ? (
