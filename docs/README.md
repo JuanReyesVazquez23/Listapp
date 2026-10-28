@@ -1,6 +1,6 @@
 # Listapp — Documentación de arquitectura
 
-**Fase 1: implementación en curso. M0 (base y SQLite) y M1 (listas y artículos) completados; el primer APK llega al cerrar M3.**
+**Fase 1: implementación en curso. M0 (base y SQLite), M1 (listas y artículos) y M2 (modo compra) completados; el primer APK llega al cerrar M3.**
 
 Esta documentación define qué se va a construir, cómo se organiza, qué datos guarda, cómo se navega, cómo se prueba y cómo se entrega el APK. Es la base para empezar a implementar sin improvisar decisiones estructurales.
 
@@ -41,4 +41,4 @@ Se usó el protocolo de los agentes del proyecto:
 
 ## Regla de esta fase
 
-No se implementa código hasta que se confirmen las decisiones bloqueantes. **D-01, D-02 y D-03 están confirmadas**; M0 y M1 están cerrados y la implementación continúa con M2. El resto de decisiones tiene un valor por defecto documentado y puede aplicarse sin bloquear el diseño.
+No se implementa código hasta que se confirmen las decisiones bloqueantes. **D-01, D-02 y D-03 están confirmadas**; M0, M1 y M2 están cerrados y la implementación continúa con M3. El resto de decisiones tiene un valor por defecto documentado y puede aplicarse sin bloquear el diseño.

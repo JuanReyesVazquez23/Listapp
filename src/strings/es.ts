@@ -27,7 +27,15 @@ export const es = {
       count === 1 ? '1 artículo' : `${count} artículos`,
     updated: (date: string) => `Actualizada el ${date}`,
     activeShoppingTitle: 'Compra en curso',
+    activeShoppingBadge: 'En compra',
+    continueShopping: 'Continuar compra',
   },
+  status: {
+    draft: 'Borrador',
+    shopping: 'En compra',
+    completed: 'Finalizada',
+  },
+
   newList: {
     title: 'Nueva lista',
     nameLabel: 'Nombre de la lista',
@@ -55,6 +63,26 @@ export const es = {
     deleteItemLabel: (name: string) => `Eliminar ${name}`,
     itemsProgress: (checked: number, total: number) =>
       `${checked} de ${total} comprados`,
+    startShopping: 'Empezar compra',
+    continueShopping: 'Continuar compra',
+    startShoppingHint: 'Añade al menos un artículo para empezar la compra.',
+    shoppingNotice: 'El progreso se guarda automáticamente.',
+  },
+  shopping: {
+    title: 'Compra',
+    optionsLabel: 'Opciones de la compra',
+    autoSave: 'Los cambios se guardan al instante.',
+    itemLabel: (name: string, checked: boolean) =>
+      `${name}, ${checked ? 'comprado' : 'no comprado'}`,
+    toggleHint: 'Toca para cambiar',
+    checkedTag: 'Comprado',
+    cancel: 'Cancelar compra',
+    cancelTitle: 'Cancelar compra',
+    cancelBody:
+      'Se desmarcarán todos los artículos y la lista volverá a borrador. ¿Cancelar la compra?',
+    keepShopping: 'Seguir comprando',
+    emptyTitle: 'Esta compra no tiene artículos',
+    emptyBody: 'Añade uno para continuar.',
   },
   history: {
     emptyTitle: 'Todavía no has finalizado ninguna compra',

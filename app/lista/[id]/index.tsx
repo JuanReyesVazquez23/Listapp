@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -7,30 +6,33 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AddItemBar } from '@/components/listas/AddItemBar';
 import { ItemRow } from '@/components/listas/ItemRow';
+import { StatusBadge } from '@/components/listas/StatusBadge';
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
 import { TextField } from '@/components/ui/TextField';
 import type { ShoppingItem } from '@/domain/item';
-import { validateItemName, validateListName } from '@/domain/validation';
+import { validateListName } from '@/domain/validation';
 import { useListDetail } from '@/features/listas/hooks/useListDetail';
+import { isAppError } from '@/lib/errors';
 import { toUserMessage } from '@/lib/errorMessages';
-import { itemNameErrorMessage, listNameErrorMessage } from '@/lib/validationMessages';
+import { listNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, spacing } from '@/theme/tokens';
 import { appDeps } from '@/useCases/deps';
 import { addItem, deleteItem, renameItem, restoreItem } from '@/useCases/items';
-import { deleteList, renameList } from '@/useCases/lists';
+import { deleteList, getListsOverview, renameList } from '@/useCases/lists';
+import { startShopping } from '@/useCases/shopping';
 
 interface Snack {
   message: string;
@@ -44,14 +46,11 @@ export default function ListDetailScreen() {
   const { status, detail, error, reload } = useListDetail(listId);
   const insets = useSafeAreaInsets();
 
-  const [itemName, setItemName] = useState('');
-  const [itemError, setItemError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-
   const [renamingList, setRenamingList] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
+  const [startingShopping, setStartingShopping] = useState(false);
 
   const [snack, setSnack] = useState<Snack | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,29 +125,64 @@ export default function ListDetailScreen() {
     [clearSnackTimer, reload, showSnack],
   );
 
-  const submitItem = async () => {
+  const handleAddItem = useCallback(
+    async (name: string) => {
+      if (!listId) {
+        return;
+      }
+      await addItem(appDeps, listId, name);
+      await reload();
+    },
+    [listId, reload],
+  );
+
+  const openShopping = useCallback(() => {
+    if (!listId) {
+      return;
+    }
+    router.push({ pathname: '/lista/[id]/comprar', params: { id: listId } });
+  }, [listId]);
+
+  const handleStartShopping = useCallback(async () => {
     if (!listId) {
       return;
     }
 
-    const validation = validateItemName(itemName);
-    if (!validation.ok) {
-      setItemError(itemNameErrorMessage(validation.reason));
-      return;
-    }
-
-    setAdding(true);
-    setItemError(null);
+    setStartingShopping(true);
     try {
-      await addItem(appDeps, listId, validation.value);
-      setItemName('');
-      await reload();
-    } catch (addError) {
-      setItemError(toUserMessage(addError));
+      await startShopping(appDeps, listId);
+      openShopping();
+    } catch (startError) {
+      // Si otra lista ya está en compra, se ofrece ir a ella en vez de dejar
+      // al usuario en un callejón sin salida.
+      if (isAppError(startError) && startError.code === 'ACTIVE_SHOPPING_EXISTS') {
+        try {
+          const overview = await getListsOverview(appDeps);
+          const active = overview.shopping;
+          if (active) {
+            showSnack(
+              {
+                message: toUserMessage(startError),
+                actionLabel: es.lists.continueShopping,
+                onAction: () =>
+                  router.push({
+                    pathname: '/lista/[id]/comprar',
+                    params: { id: active.id },
+                  }),
+              },
+              6000,
+            );
+            return;
+          }
+        } catch {
+          // Si la lectura de respaldo falla, se muestra el error original.
+        }
+      }
+      showSnack({ message: toUserMessage(startError) }, 4000);
     } finally {
-      setAdding(false);
+      setStartingShopping(false);
     }
-  };
+  }, [listId, openShopping, showSnack]);
 
   const startRenameList = () => {
     if (!detail) {
@@ -344,6 +378,15 @@ export default function ListDetailScreen() {
                 {es.lists.itemCount(detail.items.length)}
               </AppText>
 
+              <View style={styles.statusRow}>
+                <StatusBadge status={list.status} />
+                {list.status === 'shopping' ? (
+                  <AppText variant="caption" style={styles.notice}>
+                    {es.detail.shoppingNotice}
+                  </AppText>
+                ) : null}
+              </View>
+
               <AppText variant="label" style={styles.sectionTitle}>
                 {es.detail.itemsSection}
               </AppText>
@@ -361,51 +404,38 @@ export default function ListDetailScreen() {
           }
         />
 
-        <View style={[styles.addBar, { paddingBottom: Math.max(insets.bottom, spacing[2]) }]}>
-          <AppText variant="label" style={styles.addLabel}>
-            {es.detail.addItemLabel}
-          </AppText>
-          <View style={styles.addRow}>
-            <TextInput
-              accessibilityLabel={es.detail.addItemLabel}
-              placeholder={es.detail.addItemPlaceholder}
-              placeholderTextColor={colors.textMuted}
-              value={itemName}
-              onChangeText={(value) => {
-                setItemName(value);
-                setItemError(null);
-              }}
-              onSubmitEditing={() => {
-                void submitItem();
-              }}
-              returnKeyType="done"
-              selectionColor={colors.primary}
-              editable={!adding}
-              style={[styles.input, itemError ? styles.inputError : null]}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={es.detail.add}
-              accessibilityState={{ disabled: adding }}
-              disabled={adding}
-              onPress={() => {
-                void submitItem();
-              }}
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.addButtonPressed,
-                adding && styles.addButtonDisabled,
-              ]}
-            >
-              <Ionicons name="add" size={28} color={colors.onPrimary} />
-            </Pressable>
-          </View>
-          {itemError ? (
-            <AppText variant="caption" style={styles.itemError} accessibilityLiveRegion="polite">
-              {itemError}
-            </AppText>
-          ) : null}
-        </View>
+        {list.status !== 'completed' ? (
+          <>
+            <View style={styles.primaryAction}>
+              {list.status === 'shopping' ? (
+                <PrimaryButton
+                  label={es.detail.continueShopping}
+                  onPress={openShopping}
+                />
+              ) : (
+                <>
+                  <PrimaryButton
+                    label={es.detail.startShopping}
+                    onPress={() => {
+                      void handleStartShopping();
+                    }}
+                    disabled={detail.items.length === 0 || startingShopping}
+                    accessibilityHint={
+                      detail.items.length === 0 ? es.detail.startShoppingHint : undefined
+                    }
+                  />
+                  {detail.items.length === 0 ? (
+                    <AppText variant="caption" style={styles.primaryHint}>
+                      {es.detail.startShoppingHint}
+                    </AppText>
+                  ) : null}
+                </>
+              )}
+            </View>
+
+            <AddItemBar onAdd={handleAddItem} bottomInset={insets.bottom} />
+          </>
+        ) : null}
       </KeyboardAvoidingView>
 
       {snack ? (
@@ -418,7 +448,7 @@ export default function ListDetailScreen() {
             setSnack(null);
           }}
           dismissLabel={es.common.close}
-          bottom={insets.bottom + 104}
+          bottom={insets.bottom + 168}
         />
       ) : null}
     </Screen>
@@ -458,6 +488,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing[1],
   },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginTop: spacing[2],
+  },
+  notice: {
+    flex: 1,
+    color: colors.textMuted,
+  },
   sectionTitle: {
     color: colors.textSecondary,
     marginTop: spacing[6],
@@ -484,51 +524,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing[2],
   },
-  addBar: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  primaryAction: {
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
+    paddingTop: spacing[3],
     backgroundColor: colors.surface,
   },
-  addLabel: {
-    color: colors.textSecondary,
-    marginBottom: spacing[1],
-  },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing[3],
-    color: colors.text,
-    ...typography.body,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  addButtonDisabled: {
-    backgroundColor: colors.disabledBg,
-  },
-  itemError: {
-    color: colors.danger,
+  primaryHint: {
+    color: colors.textMuted,
+    textAlign: 'center',
     marginTop: spacing[1],
   },
 });

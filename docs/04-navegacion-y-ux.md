@@ -133,7 +133,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - botón de eliminar con “Deshacer”;
   - sin checkboxes en `draft` (marcar solo tiene sentido en compra).
 - Campo “Añadir artículo” siempre visible al final, con botón de añadir.
-- Botón principal fijo:
+- Botón principal fijo, apilado encima del campo de añadir:
   - “Empezar compra” si es `draft` y hay artículos;
   - “Continuar compra” si es `shopping`;
   - deshabilitado con ayuda contextual si no hay artículos.
@@ -157,12 +157,11 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - al desmarcar: vuelve al estado normal.
 - Las filas **no se mueven** al marcarse; se evita un salto bajo el pulgar.
 - Campo “Añadir artículo” al final, con teclado que no tapa la lista.
-- Botón inferior fijo “Finalizar compra”.
+- El modo compra de **M2** incluye empezar, marcar/desmarcar, progreso, añadir, recuperar y cancelar. El botón “Finalizar compra” y el modal de finalización se incorporan en **M3**.
 - “Cancelar compra” pide confirmación y avisa de que se desmarcarán todos los artículos y la lista volverá a borrador.
 - Volver atrás no cancela; la compra sigue activa.
 - No se puede borrar el último artículo en modo compra; para vaciar, se cancela y se edita el borrador.
-- Háptico ligero al marcar/desmarcar.
-- Si la lista queda sin artículos por una acción externa, se muestra un estado vacío y “Finalizar” se deshabilita.
+- Si la lista queda sin artículos por una acción externa, se muestra un estado vacío.
 
 ### 5.5 Finalizar compra (modal)
 

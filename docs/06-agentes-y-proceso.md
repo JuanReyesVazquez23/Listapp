@@ -241,14 +241,15 @@ En cada reapertura:
 - **Reservas moderadas:** Maestro en Windows, rendimiento no medido, contraste sin validar con herramienta, crecimiento del historial.
 - **Ninguna reserva bloquea el inicio de M0**, pero sí bloquean el cierre del MVP hasta que se resuelvan o se acepten explícitamente.
 
-## 11. Actualización tras M0 y M1
+## 11. Actualización tras M0, M1 y M2
 
-Las secciones anteriores conservan el estado del debate de arquitectura. Después de implementar los dos primeros hitos:
+Las secciones anteriores conservan el estado del debate de arquitectura. Después de implementar los tres primeros hitos:
 
-- El repositorio existe en GitHub y `main` tiene el commit de M0.
+- El repositorio existe en GitHub y `main` tiene los commits de M0 y M1; M2 se añade en el commit del modo compra.
 - `npx tsc --noEmit`, `npm run lint` y `npm test` pasan en local.
 - El contrato de transacción, las guardas de estado, el rollback y la persistencia están cubiertos por tests de integración con `node:sqlite`.
-- Hay tests de componente con React Native Testing Library para las filas de artículos y los estados vacíos.
+- Hay tests de componente con React Native Testing Library para listas, artículos, filas de compra, progreso y campo de añadir.
+- M2 cubre empezar la compra, marcar con estado absoluto, progreso, añadir durante la compra, recuperación de la compra activa y cancelación transaccional.
 - El bundle Android de Expo Router se genera correctamente.
 - Siguen pendientes de verificar en un dispositivo real: `expo-sqlite` con WAL, el build de EAS, el keystore y el rendimiento. Se resolverán al generar el primer APK en M3.
 

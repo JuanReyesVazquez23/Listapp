@@ -75,6 +75,59 @@ export async function countItems(reader: SqlReader, listId: string): Promise<num
   return row?.count ?? 0;
 }
 
+/** Devuelve total y marcados en una sola consulta para actualizar el progreso. */
+export async function countItemProgress(
+  reader: SqlReader,
+  listId: string,
+): Promise<{ total: number; checked: number }> {
+  const row = await reader.get<{ total: number; checked: number }>(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(is_checked), 0) AS checked
+       FROM items
+      WHERE list_id = ?`,
+    [listId],
+  );
+  return {
+    total: row?.total ?? 0,
+    checked: row?.checked ?? 0,
+  };
+}
+
+/**
+ * Escribe el estado de check de forma absoluta.
+ *
+ * No se usa `is_checked = NOT is_checked` para que dos toques rápidos no se
+ * cancelen entre sí: el cliente envía el estado que quiere ver.
+ */
+export async function setItemCheckedRow(
+  tx: Tx,
+  id: string,
+  checked: boolean,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE items
+        SET is_checked = ?, checked_at_utc = ?, updated_at_utc = ?
+      WHERE id = ?`,
+    [checked ? 1 : 0, checked ? nowUtc : null, nowUtc, id],
+  );
+  return result.changes;
+}
+
+/** Desmarca todos los artículos de una lista al cancelar la compra. */
+export async function clearItemChecks(
+  tx: Tx,
+  listId: string,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE items
+        SET is_checked = 0, checked_at_utc = NULL, updated_at_utc = ?
+      WHERE list_id = ? AND is_checked = 1`,
+    [nowUtc, listId],
+  );
+  return result.changes;
+}
+
 export async function insertItem(tx: Tx, input: InsertItemInput): Promise<ShoppingItem> {
   const checked = input.isChecked === true;
   const checkedAtUtc = checked ? (input.checkedAtUtc ?? input.nowUtc) : null;

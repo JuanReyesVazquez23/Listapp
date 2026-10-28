@@ -63,6 +63,50 @@ export async function findListSummaries(reader: SqlReader): Promise<ListSummary[
   return rows.map(mapListSummaryRow);
 }
 
+/** Devuelve el id de la única compra activa, o `null` si no hay ninguna. */
+export async function findActiveShoppingId(reader: SqlReader): Promise<string | null> {
+  const row = await reader.get<{ id: string }>(
+    "SELECT id FROM lists WHERE status = 'shopping' LIMIT 1",
+  );
+  return row?.id ?? null;
+}
+
+/**
+ * Pasa una lista de `draft` a `shopping` solo si sigue en borrador.
+ * El `WHERE` evita que dos pantallas inicien la misma compra a la vez.
+ */
+export async function startShoppingRow(
+  tx: Tx,
+  id: string,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE lists
+        SET status = 'shopping', updated_at_utc = ?
+      WHERE id = ? AND status = 'draft'`,
+    [nowUtc, id],
+  );
+  return result.changes;
+}
+
+/**
+ * Devuelve una compra activa a `draft` solo si sigue en `shopping`.
+ * Los checks se limpian en la misma transacción desde el caso de uso.
+ */
+export async function cancelShoppingRow(
+  tx: Tx,
+  id: string,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE lists
+        SET status = 'draft', updated_at_utc = ?
+      WHERE id = ? AND status = 'shopping'`,
+    [nowUtc, id],
+  );
+  return result.changes;
+}
+
 export async function renameListRow(
   tx: Tx,
   id: string,

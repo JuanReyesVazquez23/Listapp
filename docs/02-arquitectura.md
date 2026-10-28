@@ -127,12 +127,13 @@ listapp/
     components/
       ui/                        # Screen, Button, TextField, ProgressBar,
                                  # EmptyState, Snackbar, CheckboxRow
-      listas/                    # ListCard, ItemRow, SupermarketInput
+      listas/                    # ListCard, ItemRow, ShoppingItemRow,
+                                 # AddItemBar, ProgressBar, StatusBadge
       historial/                 # PurchaseRow, MonthHeader
     features/
       listas/hooks/              # useLists, useListDetail, useShopping
       historial/hooks/           # useHistory, usePurchaseDetail
-    useCases/                    # lists, shopping, history
+    useCases/                    # lists, items, shopping, history
     domain/                      # list, item, purchase, lifecycle,
                                  # validation, progress, date
     infrastructure/              # Todo el acceso a SQLite y al almacenamiento local
@@ -238,6 +239,21 @@ Para evitar re-renderizar 200 filas por un check:
 - El hook reemplaza **solo** ese ítem en el array y actualiza el contador.
 - `ItemRow` está memorizado y recibe su ítem; solo la fila cambiada se vuelve a renderizar.
 - No se hace una lectura completa después de cada check.
+
+### 6.6 Check absoluto durante la compra
+
+- La UI envía el estado deseado (`checked: true|false`), no un toggle.
+- El caso de uso escribe `is_checked` y `checked_at_utc` en una transacción y devuelve el ítem y el progreso recalculado.
+- Un check en vuelo bloquea otro sobre la misma fila; dos toques rápidos no encolan escrituras contradictorias.
+- Al volver a la pantalla, `useShopping` relee la lista: si la app se cerró a mitad de compra, los checks siguen ahí.
+- Las filas no se reordenan al marcarse; el orden visual sigue siendo `sort_order ASC`.
+
+### 6.7 Cancelar compra
+
+- Cancelar exige confirmación y se ejecuta en una sola transacción.
+- Primero se cambia `lists.status` de `shopping` a `draft` con un `UPDATE` condicionado.
+- Después se desmarcan todos los artículos y se limpia `checked_at_utc`.
+- Si la transacción falla, la lista sigue en compra con sus checks intactos.
 
 ## 7. Contrato de transacción y cola
 

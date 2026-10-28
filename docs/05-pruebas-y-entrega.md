@@ -72,8 +72,11 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - Iniciar compra con 0 artículos → error.
 - Iniciar compra con otra activa → `ACTIVE_SHOPPING_EXISTS`.
 - Marcar/desmarcar; consistencia de `checked_at`.
+- Marcar/desmarcar con estado absoluto; doble check no invierte el resultado.
 - Marcar en `draft` → `INVALID_STATE`.
 - Marcar/desmarcar/borrar/undo en `completed` → `LIST_COMPLETED`.
+- Añadir artículo durante la compra; se coloca al final.
+- Recuperar estado `shopping` y checks tras cerrar y reabrir la base.
 - Borrar el último artículo en `shopping` → `LAST_ITEM_IN_SHOPPING`.
 - Cancelar compra: desmarca todos y vuelve a `draft`.
 - Finalizar:
@@ -104,12 +107,13 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 
 ## 4. Pruebas de componentes (RNTL)
 
-- `CheckboxRow`:
+- `ShoppingItemRow`:
   - rol checkbox;
   - estado `checked`;
   - etiqueta “Leche, comprado/no comprado”;
-  - acción de toque.
+  - acción de toque y bloqueo mientras hay una escritura pendiente.
 - `ProgressBar`: rol progressbar y valor accesible.
+- `AddItemBar`: validación inline y envío del nombre recortado.
 - `TextField`: etiqueta visible, error anunciado, foco.
 - `PrimaryButton`: deshabilitado, estado de carga, etiqueta.
 - `Snackbar`: “Deshacer” y expiración.
@@ -305,6 +309,8 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M3 — Finalizar e historial** | Modal, supermercado, 0 marcados, transacción, historial, detalle, eliminar. **Primer APK `preview`.** | AC-06 a AC-10; E2E principal; APK instalado y probado en dispositivo. |
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
+
+**Estado:** M0, M1 y M2 completados. M2 deja fuera la finalización, que pertenece a M3. Las pruebas automáticas de M2 cubren las transiciones de estado, el check absoluto, la cancelación, los guards y la persistencia tras reabrir la base; el E2E de recuperación se ejecutará cuando exista el APK en M3.
 
 ## 11. Definición de terminado (MVP)
 

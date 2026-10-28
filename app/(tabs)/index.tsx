@@ -29,6 +29,10 @@ export default function ListsScreen() {
     router.push({ pathname: '/lista/[id]', params: { id } });
   };
 
+  const openShopping = (id: string) => {
+    router.push({ pathname: '/lista/[id]/comprar', params: { id } });
+  };
+
   return (
     <Screen>
       {loading && !overview ? (
@@ -65,7 +69,10 @@ export default function ListsScreen() {
                       overview.shopping.checkedCount,
                       overview.shopping.itemCount,
                     )}
-                    onPress={() => openList(overview.shopping!.id)}
+                    badge={es.lists.activeShoppingBadge}
+                    trailingLabel={es.lists.continueShopping}
+                    highlighted
+                    onPress={() => openShopping(overview.shopping!.id)}
                   />
                 </View>
               ) : null}

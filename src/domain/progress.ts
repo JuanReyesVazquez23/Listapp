@@ -16,15 +16,20 @@ export function progressPercentage(total: number, checked: number): number {
   return Math.round((checked / total) * 100);
 }
 
-export function computeProgress(
-  items: readonly { isChecked: boolean }[],
-): Progress {
-  const total = items.length;
-  const checked = items.reduce((count, item) => count + (item.isChecked ? 1 : 0), 0);
+/** Construye el progreso a partir de dos contadores ya calculados. */
+export function progressFromCounts(total: number, checked: number): Progress {
   return {
     total,
     checked,
     percentage: progressPercentage(total, checked),
     label: progressLabel(total, checked),
   };
+}
+
+export function computeProgress(
+  items: readonly { isChecked: boolean }[],
+): Progress {
+  const total = items.length;
+  const checked = items.reduce((count, item) => count + (item.isChecked ? 1 : 0), 0);
+  return progressFromCounts(total, checked);
 }
