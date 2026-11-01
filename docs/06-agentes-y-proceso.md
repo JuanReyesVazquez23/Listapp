@@ -27,9 +27,9 @@ Sin este registro, dentro de un mes solo quedaría la decisión final y se perde
 
 ## 3. Cómo se ejecutó realmente
 
-### 3.1 Desviación respecto al protocolo ideal
+### 3.1 De la desviación inicial al registro nativo
 
-El protocolo de `orchestrator.md` exige invocar de verdad a los subagentes y no simular sus respuestas. En esta sesión, el runtime de OpenCode solo expuso los subagentes integrados `explore` y `general`; los archivos de `agents/` **no** se cargaron como perfiles nativos.
+Durante el diseño, el runtime de OpenCode solo exponía los subagentes integrados `explore` y `general`; los archivos de `agents/` **no** se cargaron como perfiles nativos.
 
 Para no falsear el proceso:
 
@@ -38,9 +38,11 @@ Para no falsear el proceso:
 - las respuestas fueron de subagentes reales, no inventadas por el orquestador;
 - el orquestador conservó la potestad de verificar hechos y corregir afirmaciones.
 
-Esto es una **desviación de forma, no de fondo**: hubo propuesta, crítica y revisión independientes por invocación, pero el rol era textual, no un perfil registrado con permisos propios. Queda documentado para que nadie atribuya a `critic` o `reviser` una identidad de sistema que en esta fase no existía.
+Fue una **desviación de forma, no de fondo**: hubo propuesta, crítica y revisión independientes por invocación, pero el rol era textual, no un perfil registrado con permisos propios.
 
-### 3.2 Cómo registrarlos de forma nativa
+En la fase de implementación se corrigió: los cinco perfiles se registraron en `.opencode/agents/` y se verificó que `developer`, `critic` y `reviser` se pueden invocar como subagentes reales, cargan la skill `listapp-engineering` y leen su definición canónica en `agents/`. La revisión de M3 se hizo con esos perfiles nativos.
+
+### 3.2 Cómo están registrados
 
 En OpenCode V2, los agentes de proyecto se descubren en:
 
@@ -48,9 +50,9 @@ En OpenCode V2, los agentes de proyecto se descubren en:
 .opencode/agents/<nombre>.md
 ```
 
-No en `agents/`. Por eso los archivos actuales son documentación del rol, no agentes cargados.
+No en `agents/`. Por eso `agents/<rol>.md` sigue siendo la definición canónica del rol y `.opencode/agents/<rol>.md` es un **puntero fino**: describe el encargo, ordena leer el archivo canónico y cargar la skill, y declara los permisos. No duplica el texto del rol, para no acabar con dos fuentes de verdad.
 
-Un perfil mínimo para el crítico:
+Cada perfil tiene este formato:
 
 ```md
 ---
@@ -65,7 +67,7 @@ permissions:
     effect: deny
 ---
 
-Eres un revisor técnico independiente y escéptico...
+Eres el rol `critic` de Listapp...
 ```
 
 Notas verificadas en la documentación de V2:
@@ -76,7 +78,17 @@ Notas verificadas en la documentación de V2:
 - los permisos se expresan como lista de `action` / `resource` / `effect`;
 - el cuerpo Markdown es el system prompt.
 
-Durante la fase de diseño, `architect`, `critic`, `reviser` y `orchestrator` deberían registrarse con `edit: deny` y `shell: deny`: ninguno necesita escribir archivos. `developer` es la excepción: necesita editar y ejecutar pruebas, así que su perfil nativo debe permitir `edit` y `shell`, limitados a los hitos aprobados. Si se migran los archivos, conviene moverlos, no duplicarlos, para no acabar con dos fuentes de verdad.
+Permisos efectivos del equipo:
+
+| Agente | Edición | Shell |
+|---|---|---|
+| `architect` | deny | deny |
+| `critic` | deny | deny |
+| `reviser` | deny | deny |
+| `orchestrator` | allow | allow |
+| `developer` | allow, salvo `.git/**` | allow, salvo `git commit`, `git push`, `git reset --hard`, `git clean`, `npm publish` y `eas` |
+
+Los revisores no pueden escribir ni ejecutar comandos: su evidencia es la lectura del código. El `developer` implementa y verifica, pero no commitea, no publica ni compila el APK; eso queda en manos del orquestador.
 
 ## 4. Rondas realizadas
 
