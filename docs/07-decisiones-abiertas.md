@@ -42,7 +42,7 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-09 | ¿Se puede borrar una lista mientras está en compra? | **Sí, con confirmación que avisa de que se pierde el progreso.** | La alternativa es obligar a cancelar primero; añade un paso pero evita borrados accidentales. | 03, 04 |
 | D-10 | ¿Supermercado como catálogo o texto libre? | **Texto libre, obligatorio al finalizar, con sugerencias de las últimas 8 compras.** | Un catálogo exige mantener datos, altas y duplicados; no aporta al MVP. | 01, 03 |
 | D-11 | ¿Supermercado predeterminado? | **No.** Se muestran las últimas 8 compras como sugerencias, pero el campo no se rellena solo. | Rellenarlo acelera el flujo, pero puede guardar el supermercado equivocado sin que el usuario lo note. | 03, 04 |
-| D-12 | ¿Cantidades y precios? | **No estructurados.** La cantidad va en el nombre (“2 kg de patatas”). | Añadir campos, totales y moneda multiplica la UI, el modelo y las pruebas. | 01, 03 |
+| D-12 | ¿Cantidades y precios? | **Derogada por D-33.** Ya están estructurados en modo La Sirena. | El alcance cambió el 31 oct 2026. La compra normal sigue sin precios. | 01, 03 |
 | D-13 | ¿Se puede añadir un artículo durante la compra? | **Sí, al final de la lista.** | Es el caso real de “se me olvidó algo”; bloquearlo obliga a cancelar. | 01, 03, 04 |
 | D-14 | ¿Se puede editar el nombre de la lista en compra? | **Sí.** | Es inocuo y evita cancelar para corregir una errata. | 03, 04 |
 | D-15 | ¿Se puede deshacer el borrado de un artículo? | **Sí, 5 segundos; solo el último borrado.** | Sin deshacer, un toque accidental obliga a reescribir el artículo. Un historial de deshaceres añade estado. | 01, 03, 04 |
@@ -59,8 +59,8 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-21 | Búsqueda y filtros de historial | **No.** | No se pidió; el historial se agrupa por mes y se ordena por fecha. | 01, 03 |
 | D-22 | Listas recurrentes, plantillas o “repetir compra” | **No.** Duplicar una compra queda para v1.1. | Añade un flujo completo y decisiones de copia de checks. | 01, 03 |
 | D-23 | Pantalla de ajustes | **No en el MVP.** | No hay preferencias que configurar; todo es automático. Si se añade, será para export/import en v1.1. | 04 |
-| D-24 | Precios, ofertas, código de barras, voz, OCR, compartir, recordatorios | **No.** | Fuera del job to be done. | 01 |
-| D-25 | Cifrado SQLCipher, analítica, crash reporting, OTA | **No.** | No hay datos sensibles declarados ni red en ejecución; el APK se reinstala. | 01, 02 |
+| D-24 | Precios, ofertas, código de barras, voz, OCR, compartir, recordatorios | **Precios solo en modo La Sirena (D-33).** Ofertas, comparación entre tiendas, código de barras, voz, OCR, compartir y recordatorios siguen fuera. | El usuario pidió precio y total; comparar tiendas u ofertas es otro producto. | 01 |
+| D-25 | Cifrado SQLCipher, analítica, crash reporting, OTA | **No.** Hay una consulta de red opcional (catálogo), sin analítica ni reporte de crashes. | El cifrado no cambia: los datos siguen en el dispositivo. La red es una ayuda, no una dependencia. | 01, 02 |
 
 ## 5. Identidad, entrega y entorno
 
@@ -73,6 +73,30 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-30 | Distribución | **APK por sideload** (`preview` de EAS); sin Play Store. | Publicar en Play Store exige AAB, ficha, política de privacidad y revisión. | 01, 02, 05 |
 | D-31 | Versionado | **`version` 1.0.0**, `versionCode` 1, incremento manual en cada entrega. | El versionCode debe subir en cada APK que sustituya a otro. | 02, 05 |
 | D-32 | Repositorio Git | **Inicializar antes de M0**, con `.gitignore` para `node_modules`, `.expo`, builds y secretos. | Sin repo no hay historial ni CI; no afecta al APK, pero sí al trabajo. | 05 |
+
+### 5.1 Alcance añadido el 31 de octubre de 2026: precio por artículo y La Sirena
+
+| ID | Decisión | Valor confirmado | Consecuencia | Doc |
+|---|---|---|---|---|
+| D-33 | Detalle al marcar | **Marca, cantidad, unidad y precio por unidad**, solo en modo La Sirena. | Migración v2, formulario nuevo y total por compra. La compra normal no cambia. | 01, 03, 04 |
+| D-34 | Unidades | **Unidad, libra, kilogramo y litro.** | La cantidad se guarda como entero en milésimas y la unidad como código corto. | 03 |
+| D-35 | Cuándo se elige el modo | **Al iniciar la compra**, con un selector explícito; no se cambia a mitad. | Se guarda en la lista y se muestra en la cabecera. | 01, 04 |
+| D-36 | ¿El detalle es obligatorio? | **No.** “Omitir” marca el artículo sin datos y el total se marca como parcial. | Nunca se bloquea el marcado por falta de precio o de red. | 01, 04 |
+| D-37 | Dinero y cantidades | **Céntimos enteros y milésimas enteras**; un único redondeo por línea; moneda fija `DOP`. | Evita `REAL`, deriva y totales que no cuadran. | 03 |
+| D-38 | Backend de catálogo | **Node.js en Vercel**, con búsqueda por el nombre del artículo y máximo 8 resultados. | El APK apunta a una URL HTTPS configurable; el backend no guarda datos del usuario. | 02, 05 |
+| D-39 | Fuente de precios | **Endpoint público VTEX de `sirena.do`**, normalizado por el backend y con timeout y caché corta. | Si el endpoint cambia, se corrige solo el backend; la app sigue funcionando en manual. | 02, 05 |
+| D-40 | Total en el historial | **Se guarda el subtotal de cada línea y el total de la compra al finalizar.** | El detalle histórico muestra precio, cantidad y total sin recalcular. | 03, 04 |
+| D-41 | Precio del catálogo | **Por paquete/SKU.** Al elegir un resultado se propone cantidad 1 y unidad `unit`. | Evita interpretar «Azúcar Wala 5 Lb · RD$175» como 5 lb × RD$175. | 03, 04 |
+| D-42 | Desmarcar | **Borra el detalle de la línea** en la misma sentencia. | Un precio en una línea «Sin comprar» es un registro falso; lo impone un CHECK. | 03 |
+| D-43 | Modo y total al cerrar | **`shopping_mode` se conserva al completar y se borra al cancelar; `total_cents` solo existe en `completed`.** | El historial muestra modo y total sin recalcular. | 03 |
+| D-44 | Total sin precios | **`total_cents = NULL` si no hay ninguna línea marcada con precio.** | No mostrar un total falso; `0` sí es un total real y se muestra `RD$0.00`. | 03, 04 |
+| D-45 | Caché del catálogo | **Sin caché en el cliente**; solo caché HTTP del CDN del backend. | La app no guarda precios ni respuestas: cada apertura consulta o cae a manual. | 02, 04 |
+| D-46 | Formato de dinero | **Visual `RD$1,234.56`; editable `1234.56`.** | El parser no acepta separador de miles; la ida y vuelta se hace con el valor editable. | 03, 04 |
+| D-47 | Timeout del catálogo en el móvil | **4500 ms con `AbortController`**, aborto al desmontar o al repetir la búsqueda. | Sin red, el formulario no queda en carga indefinida. | 02, 04 |
+| D-48 | Paginación y caché del backend | **Hasta 2 páginas de 50**; vacío cacheado 60 s; errores sin caché. | Reduce el riesgo de ocultar coincidencias sin disparar peticiones. | 02, 05 |
+| D-49 | Logs de la consulta | **Sin logs de aplicación con `q`**; los logs de acceso del CDN pueden conservar la URL. | Se documenta la retención real en lugar de prometer privacidad absoluta. | 02 |
+| D-50 | Copia antes de la migración 002 | **Sin copia automática de archivo**: migración atómica con verificación de conteos y FK. Copia manual antes del primer APK con datos reales. | `VACUUM INTO` no funciona dentro de la transacción y una ruta de archivo añade un fallo nuevo. | 03, 05 |
+| D-51 | Visibilidad del modo | **Chip “Con La Sirena” solo en modo catálogo**; la compra normal conserva su interfaz actual. | Mostrar un chip en normal contradice “idéntica a hoy”. | 01, 04 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 
@@ -109,7 +133,7 @@ D-27: usar #16A34A y ajustar contrastes
 
 No quedan decisiones bloqueantes. D-01, D-02 y D-03 están confirmadas.
 
-- **D-04 a D-32:** se aplican los valores propuestos; están documentados y son reversibles con una migración o un cambio de UI.
+- **D-04 a D-40:** se aplican los valores propuestos; están documentados y son reversibles con una migración o un cambio de UI. Las excepciones confirmadas por el usuario están en el registro.
 
 ## 9. Registro de decisiones
 
@@ -121,6 +145,14 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-02 | 28 oct 2026 | EAS confirmado; cuenta personal; keystore gestionado por EAS | Usuario |
 | D-03 | 28 oct 2026 | Android 13+ o emulador API 34; modelo exacto a documentar | Usuario |
 | D-04 | — | Pendiente | — |
+| D-33 | 31 oct 2026 | Detalle de marca, cantidad, unidad y precio solo en modo La Sirena | Usuario |
+| D-34 | 31 oct 2026 | Unidad, libra, kilogramo y litro | Usuario |
+| D-35 | 31 oct 2026 | Modo elegido al iniciar la compra; fijo durante la compra | Usuario |
+| D-36 | 31 oct 2026 | Detalle opcional; “Omitir” no bloquea y el total se marca parcial | Orquestador, derivado de D-36 y del requisito de no bloquear |
+| D-37 | 31 oct 2026 | Céntimos y milésimas enteras; moneda DOP | Orquestador, regla de dinero de la skill |
+| D-38 | 31 oct 2026 | Backend Node.js en Vercel; búsqueda acotada a 8 resultados | Usuario (Vercel) |
+| D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
+| D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |
 
 Las decisiones cerradas se trasladan al documento temático correspondiente y este registro solo conserva la fecha y el resultado. Así no hay dos fuentes de verdad.

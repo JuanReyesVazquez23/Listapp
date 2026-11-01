@@ -56,6 +56,10 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 | Editar artículo | Cambiar el nombre; se conserva su posición. |
 | Eliminar artículo | Con “Deshacer” de 5 segundos; solo el último borrado es deshacible. |
 | Empezar compra | Requiere al menos un artículo y que no haya otra compra activa. Pasa a `shopping`. |
+| Modo de compra | Al iniciar, el usuario elige **compra normal** o **compra con La Sirena**. El modo queda fijado para esa compra y se muestra en la cabecera. |
+| Detalle al marcar | Solo en modo La Sirena: al marcar se abre un formulario con **marca**, **cantidad**, **unidad** y **precio**. Se puede omitir; nunca bloquea el marcado. |
+| Búsqueda en catálogo | En modo La Sirena, el formulario busca por el **nombre del artículo** (`pan`, `azúcar`) y muestra solo marcas y presentaciones de esa familia, nunca el catálogo completo. |
+| Total de la compra | Suma de los subtotales de los artículos marcados con precio. Se ve durante la compra, al finalizar y en el detalle histórico. |
 | Marcar/desmarcar | En modo compra; se guarda al instante; no se reordenan las filas. |
 | Añadir durante la compra | El usuario puede añadir un artículo olvidado; se añade al final. |
 | Progreso | Contador “X de Y” y barra; se actualiza al marcar. |
@@ -65,18 +69,17 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 | Historial | Lista de compras completadas, agrupadas por mes, orden descendente, con fecha completa, hora, supermercado y conteo. |
 | Detalle histórico | Todos los artículos separados en “Comprados” y “Sin comprar”; solo lectura. |
 | Eliminar compra | Confirmación; borra la compra y sus artículos. |
-| Offline | Todo el flujo funciona en modo avión. |
+| Offline | Todo el flujo funciona en modo avión. La consulta a La Sirena es opcional: si falla o no hay red, se sigue marcando a mano y el total se calcula con los datos introducidos. |
 | Identidad | Verde y blanco, tema claro, español, Android vertical. |
 | Entrega | APK instalable generado con EAS Build. |
 
 ### 4.2 Fuera de alcance (v1.1 o nunca)
 
 - Login, cuentas, nube, sincronización, multiusuario y colaboración.
-- Precios, totales, presupuestos, ofertas y comparación de precios.
-- Cantidades y unidades estructuradas (`2 kg`, `3 unidades`). El nombre del artículo puede incluir la cantidad como texto.
+- Presupuestos, ofertas, descuentos y comparación de precios entre supermercados.
 - Categorías, notas por artículo y orden manual por arrastre.
 - Código de barras, OCR, voz, recetas e importación de listas.
-- Catálogo de supermercados, geolocalización e historial de precios.
+- Catálogo propio de supermercados, geolocalización e historial de precios en el tiempo.
 - Recordatorios, notificaciones, compartir y widgets.
 - Modo oscuro, tablet, landscape y validación en iOS.
 - Export/import, backup propio, búsqueda y filtros de historial.
@@ -99,6 +102,11 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 | ¿Historial paginado? | **No en el MVP** | Se carga todo y se virtualiza con `SectionList`; se añadirá si el volumen lo exige. |
 | ¿Backup? | **No en el MVP** | `allowBackup=false`; export JSON en v1.1. Desinstalar borra los datos. |
 | ¿Modo oscuro? | **No en el MVP** | Tema claro verde/blanco; los tokens quedan preparados. |
+| ¿Precios en la compra normal? | **No.** Solo en modo La Sirena. | Pedir precio siempre convierte una lista de la compra en una caja registradora y rompe la promesa de “marcar en un toque”. |
+| ¿El precio es obligatorio? | **No.** El formulario se puede omitir. | Si el precio bloquea, el usuario deja de marcar con prisa; el total muestra cuántos artículos quedaron sin precio. |
+| ¿Precio por unidad o total de la línea? | **Por unidad/libra**, con subtotal calculado en vivo. | Es el dato que se ve en el estante y permite comprobar la cuenta; el total de la línea se guarda calculado para evitar redondeos distintos al releer. |
+| ¿Se puede cambiar de modo a mitad de compra? | **No.** Se elige al iniciar y se mantiene. | Cambiar de modo obliga a decidir qué hacer con los precios ya introducidos y duplica estados. |
+| ¿Qué pasa si La Sirena no responde? | **Se sigue en manual**, con aviso discreto y sin perder lo escrito. | La red nunca puede ser requisito para comprar. |
 
 ## 5. Ciclo de vida de una lista
 
@@ -156,13 +164,18 @@ Cada criterio indica cómo se verifica. “Componente” = React Native Testing 
 | AC-13 | Accesibilidad: cada artículo expone rol checkbox, estado comprado/no comprado y etiqueta; el progreso expone valor accesible; los errores se anuncian (RNTL). En dispositivo: objetivos ≥48 dp, texto al 200 % sin recortes, TalkBack comprensible y “reducir movimiento” respetado (manual). | Componente + manual |
 | AC-14 | En el dispositivo documentado y APK `preview` release: mediana de 5 arranques en frío ≤2 s con `adb shell am start -W`; mediana de 20 checks en lista de 200 artículos: toque→commit ≤50 ms y toque→fila actualizada ≤100 ms, medido con instrumentación `performance.now()` y logcat; scroll sin tirones perceptibles. | Manual + `adb` + instrumentación |
 | AC-15 | El APK de EAS `preview` se instala en un dispositivo físico, abre sin crash y completa el flujo entero. | Manual |
-| AC-16 | El runner aplica la migración v1 sobre una BD vacía; una segunda ejecución es no-op y deja `user_version=1`. Una migración de prueba con fallo inyectado hace rollback: datos y versión intactos. Una BD con `user_version=2` no arranca: pantalla bloqueante con versión detectada e instrucciones, sin borrar la BD. | Integración |
+| AC-16 | El runner aplica la migración v1 sobre una BD vacía y la v2 sobre una BD v1 con datos; una segunda ejecución es no-op y deja `user_version=2`. Tras migrar, los conteos de listas y artículos no cambian, `PRAGMA foreign_key_check` está vacío y la FK de `items` apunta a `lists`. Una migración de prueba con fallo inyectado hace rollback: datos y versión intactos. Una BD con `user_version=3` no arranca: pantalla bloqueante con versión detectada e instrucciones, sin borrar la BD. | Integración |
 | AC-17 | Tres inserciones con el mismo `created_at` fijo conservan el orden de inserción; borrar el artículo del medio no reordena el resto; el orden visual es `sort_order ASC`. | Integración |
 | AC-18 | `/compra/[id]` solo admite `completed`; `/lista/[id]/comprar` y `/lista/[id]/finalizar` solo `shopping`; `/lista/[id]` con `completed` redirige a la compra. Un id inexistente en cualquiera de las cuatro rutas redirige a `+not-found`, sin crash ni pantalla intermedia. | Componente + manual/deep link |
 | AC-19 | Borrar un artículo muestra “Artículo eliminado · Deshacer” durante 5 s. Deshacer restaura nombre, estado y posición si está libre; si no, lo añade al final. Pasados 5 s o al salir de la pantalla, el borrado persiste. En compra no se puede borrar el último artículo. Si se finaliza con el snackbar abierto, deshacer falla sin escribir. | Componente + integración |
 | AC-20 | Cancelar compra pide confirmación que dice que se desmarcarán todos y quedará borrador. Atrás en modo compra no cancela. | Integración + E2E |
 | AC-21 | Contrato de BD: `PRAGMA foreign_keys=1` y `journal_mode=wal` verificados al arrancar; todas las operaciones pasan por la cola; una transacción fallida hace rollback; un fallo de `COMMIT` no deja la conexión envenenada; ninguna pantalla lee antes de que `boot()` termine. | Integración + manual |
 | AC-22 | Guardas de mutación: marcar/desmarcar solo en `shopping`; crear/editar/borrar/deshacer solo en `draft` o `shopping`; cualquier intento sobre `completed` devuelve `LIST_COMPLETED` y no escribe. | Integración |
+| AC-23 | Al iniciar una compra se elige modo normal o La Sirena. El modo queda guardado; en catálogo se muestra el chip “Con La Sirena”, y la compra normal conserva exactamente la interfaz y el marcado de un toque. | Integración + componente + E2E |
+| AC-24 | En modo La Sirena, marcar abre el formulario de detalle. Guardar marca, cantidad (unidad/libra/kilogramo/litro), unidad y precio por unidad persiste el artículo y su subtotal; “Omitir” lo marca sin datos y no muestra error. | Integración + componente |
+| AC-25 | El subtotal de cada línea se calcula con enteros (céntimos × milésimas) y un único redondeo; el total de la compra es la suma de subtotales de los artículos marcados con precio, puede ser 0 y se muestra “RD$0.00”, y coincide con el guardado al finalizar. | Unitaria + integración |
+| AC-26 | La búsqueda de catálogo usa el nombre del artículo como consulta, devuelve como máximo 8 coincidencias de esa familia con marca, presentación y precio, y nunca la lista completa. Un fallo de red o un timeout muestra un aviso y deja el formulario editable. | Integración del backend + componente + manual |
+| AC-27 | El total aparece durante la compra, en el modal de cierre y en el detalle histórico. Si hay artículos marcados sin precio, se indica cuántos son y el total se muestra como parcial; si no hay ninguna línea con precio, se muestra “Sin precios” y nunca un total inventado. Las compras normales y las anteriores a la v2 no muestran total ni aviso de parcial. | Componente + integración + E2E |
 
 ## 8. Métricas de éxito del MVP
 
@@ -185,3 +198,5 @@ Cada criterio indica cómo se verifica. “Componente” = React Native Testing 
 8. La fecha/hora es la del dispositivo en el momento de confirmar.
 9. “Local/offline” se refiere a la ejecución; EAS usa red durante el build.
 10. No se promete cifrado de la base de datos; no hay datos sensibles declarados.
+11. La consulta de catálogo depende de un backend propio desplegado en Vercel, que a su vez depende de un endpoint público de `sirena.do`. Puede cambiar o dejar de estar disponible; la app no depende de él para funcionar.
+12. El backend no guarda datos del usuario: solo reenvía y normaliza la búsqueda. No hay cuentas, historial de búsquedas ni precios almacenados.
