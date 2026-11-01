@@ -12,6 +12,7 @@ const milk: ShoppingItem = {
   sortOrder: 1,
   createdAtUtc: 1,
   updatedAtUtc: 1,
+  detail: null,
 };
 
 describe('ItemRow', () => {

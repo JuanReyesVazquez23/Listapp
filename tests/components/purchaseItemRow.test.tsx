@@ -13,6 +13,7 @@ function item(name: string, isChecked: boolean): ShoppingItem {
     sortOrder: 1,
     createdAtUtc: 1,
     updatedAtUtc: 1,
+    detail: null,
   };
 }
 

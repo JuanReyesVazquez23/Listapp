@@ -41,6 +41,9 @@ export async function insertList(tx: Tx, input: InsertListInput): Promise<Shoppi
     completedLocalDate: null,
     completedLocalTime: null,
     supermarketName: null,
+    // Un borrador no tiene modo de compra ni total.
+    shoppingMode: null,
+    totalCents: null,
   };
 }
 

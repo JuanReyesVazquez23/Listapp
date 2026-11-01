@@ -50,6 +50,10 @@ export function mapListRow(row: ListRow): ShoppingList {
     completedLocalDate: row.completed_local_date,
     completedLocalTime: row.completed_local_time,
     supermarketName: row.supermarket_name,
+    // El esquema v1 no guarda modo ni total: la compra normal se comporta
+    // como siempre hasta que la migración 002 añada las columnas.
+    shoppingMode: null,
+    totalCents: null,
   };
 }
 
@@ -58,6 +62,7 @@ export function mapListSummaryRow(row: ListSummaryRow): ListSummary {
     ...mapListRow(row),
     itemCount: row.item_count,
     checkedCount: row.checked_count,
+    unpricedCheckedCount: 0,
   };
 }
 
@@ -71,5 +76,7 @@ export function mapItemRow(row: ItemRow): ShoppingItem {
     sortOrder: row.sort_order,
     createdAtUtc: row.created_at_utc,
     updatedAtUtc: row.updated_at_utc,
+    // El esquema v1 no guarda detalle de línea.
+    detail: null,
   };
 }

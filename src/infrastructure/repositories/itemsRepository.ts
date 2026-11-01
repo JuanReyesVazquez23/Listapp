@@ -159,6 +159,8 @@ export async function insertItem(tx: Tx, input: InsertItemInput): Promise<Shoppi
     sortOrder,
     createdAtUtc: input.nowUtc,
     updatedAtUtc: input.nowUtc,
+    // La v1 inserta artículos sin detalle de línea.
+    detail: null,
   };
 }
 

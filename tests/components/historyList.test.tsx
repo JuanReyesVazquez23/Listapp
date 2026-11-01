@@ -21,8 +21,11 @@ function purchase(
     completedLocalDate,
     completedLocalTime,
     supermarketName,
+    shoppingMode: null,
+    totalCents: null,
     itemCount,
     checkedCount,
+    unpricedCheckedCount: 0,
   };
 }
 

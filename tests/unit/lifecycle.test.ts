@@ -8,6 +8,7 @@ import {
   canRenameItem,
   canRenameList,
   canRestoreItem,
+  canSaveItemDetail,
   canStartShopping,
   canToggleItem,
   isEditable,
@@ -75,5 +76,19 @@ describe('reglas de ciclo de vida', () => {
     expect(canDeletePurchase({ status: 'completed' })).toBeNull();
     expect(canDeletePurchase({ status: 'draft' })).toBe('INVALID_STATE');
     expect(canDeletePurchase({ status: 'shopping' })).toBe('INVALID_STATE');
+  });
+
+  it('solo guarda detalle en una compra en curso de catálogo', () => {
+    expect(canSaveItemDetail({ status: 'shopping', shoppingMode: 'catalog' })).toBeNull();
+    expect(canSaveItemDetail({ status: 'shopping', shoppingMode: 'normal' })).toBe(
+      'INVALID_STATE',
+    );
+    expect(canSaveItemDetail({ status: 'shopping', shoppingMode: null })).toBe(
+      'INVALID_STATE',
+    );
+    expect(canSaveItemDetail({ status: 'draft', shoppingMode: null })).toBe('INVALID_STATE');
+    expect(canSaveItemDetail({ status: 'completed', shoppingMode: 'catalog' })).toBe(
+      'LIST_COMPLETED',
+    );
   });
 });

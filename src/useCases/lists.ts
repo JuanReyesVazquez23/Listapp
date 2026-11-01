@@ -44,6 +44,9 @@ export async function createList(
     completedLocalDate: null,
     completedLocalTime: null,
     supermarketName: null,
+    // Un borrador no tiene modo de compra ni total; se fijan al empezar.
+    shoppingMode: null,
+    totalCents: null,
   };
 
   await deps.database.mutate((tx) =>

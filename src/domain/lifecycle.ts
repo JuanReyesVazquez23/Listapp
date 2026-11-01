@@ -11,6 +11,8 @@ export type GuardFailure =
 
 type StatusLike = Pick<ShoppingList, 'status'>;
 
+type DetailLike = Pick<ShoppingList, 'status' | 'shoppingMode'>;
+
 function editable(status: ListStatus): GuardFailure | null {
   return status === 'completed' ? 'LIST_COMPLETED' : null;
 }
@@ -56,6 +58,23 @@ export function canToggleItem(list: StatusLike): GuardFailure | null {
     return null;
   }
   return list.status === 'completed' ? 'LIST_COMPLETED' : 'INVALID_STATE';
+}
+
+/**
+ * El detalle de una línea solo se guarda en una compra en curso de catálogo.
+ *
+ * La compra normal no tiene precio ni cantidad editables; una compra cerrada
+ * es historial inmutable. La UI usa la misma guarda para abrir el modal, y
+ * los casos de uso la repiten dentro de la transacción.
+ */
+export function canSaveItemDetail(list: DetailLike): GuardFailure | null {
+  if (list.status === 'completed') {
+    return 'LIST_COMPLETED';
+  }
+  if (list.status !== 'shopping' || list.shoppingMode !== 'catalog') {
+    return 'INVALID_STATE';
+  }
+  return null;
 }
 
 export function canStartShopping(

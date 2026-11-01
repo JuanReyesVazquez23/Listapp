@@ -13,8 +13,11 @@ const purchase: ListSummary = {
   completedLocalDate: '2026-10-27',
   completedLocalTime: '18:42',
   supermarketName: 'Mercadona',
+  shoppingMode: null,
+  totalCents: null,
   itemCount: 10,
   checkedCount: 8,
+  unpricedCheckedCount: 0,
 };
 
 describe('PurchaseRow', () => {
