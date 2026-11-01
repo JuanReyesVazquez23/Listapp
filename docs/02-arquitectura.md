@@ -129,12 +129,15 @@ listapp/
                                  # EmptyState, Snackbar, CheckboxRow
       listas/                    # ListCard, ItemRow, ShoppingItemRow,
                                  # AddItemBar, ProgressBar, StatusBadge
-      historial/                 # PurchaseRow, MonthHeader
+      compras/                   # FinishPurchaseForm, HistoryList, PurchaseRow,
+                                 # PurchaseItemRow
     features/
-      listas/hooks/              # useLists, useListDetail, useShopping
-      historial/hooks/           # useHistory, usePurchaseDetail
+      listas/hooks/              # useLists, useListDetail, useShopping,
+                                 # useFinishPurchase, useHistory,
+                                 # usePurchaseDetail
+      navigation/                # applyGuard: traduce las guardas a replace
     useCases/                    # lists, items, shopping, history
-    domain/                      # list, item, purchase, lifecycle,
+    domain/                      # list, item, purchase, lifecycle, navigation,
                                  # validation, progress, date
     infrastructure/              # Todo el acceso a SQLite y al almacenamiento local
       databaseManager.ts         # open / boot / close / estado
@@ -149,7 +152,7 @@ listapp/
   tests/
     unit/
     integration/
-    component/
+    components/
     fixtures/
   e2e/
     01-flujo-principal.yaml
