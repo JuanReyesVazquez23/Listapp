@@ -310,7 +310,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. Verificación local: `npx tsc --noEmit`, `npm run lint`, `npx expo export --platform android` y 25 suites / 156 pruebas en verde. Queda pendiente de entrega: compilar el APK `preview`, instalarlo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual.
+**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. Verificación local: `npx tsc --noEmit`, `npm run lint`, `npx expo export --platform android` y 25 suites / 156 pruebas en verde. APK `preview` generado el 31/10/2026 (build `c2b17087-ae19-476a-80fa-d2e2db43be39`) y guardado en `C:\Users\jeanx\Downloads\listapp-preview.apk`. Queda pendiente de entrega: instalarlo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual.
 
 ## 11. Definición de terminado (MVP)
 
