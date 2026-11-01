@@ -14,6 +14,14 @@ export interface InsertListInput {
   nowUtc: number;
 }
 
+export interface FinishShoppingInput {
+  id: string;
+  nowUtc: number;
+  localDate: string;
+  localTime: string;
+  supermarketName: string;
+}
+
 export async function insertList(tx: Tx, input: InsertListInput): Promise<ShoppingList> {
   await tx.run(
     `INSERT INTO lists (
@@ -73,7 +81,11 @@ export async function findActiveShoppingId(reader: SqlReader): Promise<string | 
 
 /**
  * Pasa una lista de `draft` a `shopping` solo si sigue en borrador.
- * El `WHERE` evita que dos pantallas inicien la misma compra a la vez.
+ *
+ * La condición sobre el estado forma parte del contrato de la mutación: el
+ * `UPDATE` no debe aplicarse si la lista dejó de ser un borrador. La cola
+ * serial y `BEGIN IMMEDIATE` son las que impiden que otra escritura se cuele
+ * entre la lectura previa y este `UPDATE`.
  */
 export async function startShoppingRow(
   tx: Tx,
@@ -118,6 +130,108 @@ export async function renameListRow(
         SET name = ?, updated_at_utc = ?
       WHERE id = ? AND status <> 'completed'`,
     [name, nowUtc, id],
+  );
+  return result.changes;
+}
+
+/**
+ * Cierra la compra solo si sigue en `shopping`.
+ *
+ * El `WHERE` con el estado esperado forma parte del contrato de la mutación:
+ * el cierre no se aplica si la lista ya no está en compra. La cola serial y
+ * `BEGIN IMMEDIATE` impiden que otra escritura se cuele entre la lectura y
+ * este `UPDATE`; el caso de uso comprueba `changes === 1` y relee cuando no
+ * lo es para devolver el estado real.
+ */
+export async function finishShoppingRow(
+  tx: Tx,
+  input: FinishShoppingInput,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE lists
+        SET status = 'completed',
+            updated_at_utc = ?,
+            completed_at_utc = ?,
+            completed_local_date = ?,
+            completed_local_time = ?,
+            supermarket_name = ?
+      WHERE id = ? AND status = 'shopping'`,
+    [
+      input.nowUtc,
+      input.nowUtc,
+      input.localDate,
+      input.localTime,
+      input.supermarketName,
+      input.id,
+    ],
+  );
+  return result.changes;
+}
+
+/** Compras cerradas con su progreso, de la más reciente a la más antigua. */
+export async function findCompletedPurchaseSummaries(
+  reader: SqlReader,
+): Promise<ListSummary[]> {
+  const rows = await reader.all<ListSummaryRow>(
+    `SELECT l.id, l.name, l.status, l.created_at_utc, l.updated_at_utc,
+            l.completed_at_utc, l.completed_local_date, l.completed_local_time,
+            l.supermarket_name,
+            (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id) AS item_count,
+            (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id AND i.is_checked = 1)
+              AS checked_count
+       FROM lists l
+      WHERE l.status = 'completed'
+      ORDER BY l.completed_at_utc DESC`,
+  );
+  return rows.map(mapListSummaryRow);
+}
+
+/**
+ * Nombres de las últimas compras, sin repetir el mismo supermercado.
+ *
+ * La comparación ignora mayúsculas y minúsculas, incluidas las vocales
+ * acentuadas, y se hace en JavaScript con `toLowerCase()` y no en SQL: el
+ * `lower()` de SQLite sin ICU solo pliega ASCII, así que `SÁNCHEZ` y `Sánchez`
+ * acabarían como dos sugerencias distintas. No se eliminan los diacríticos:
+ * «Sanchez» y «Sánchez» son nombres distintos.
+ *
+ * Se conserva la grafía de la compra más reciente de cada grupo y se recorta
+ * al límite después de deduplicar. Se leen todas las compras completadas; el
+ * volumen del MVP es bajo y no justifica otra consulta.
+ */
+export async function findRecentSupermarketNames(
+  reader: SqlReader,
+  limit: number,
+): Promise<string[]> {
+  const rows = await reader.all<{ supermarket_name: string }>(
+    `SELECT supermarket_name
+       FROM lists
+      WHERE status = 'completed' AND supermarket_name IS NOT NULL
+      ORDER BY completed_at_utc DESC`,
+  );
+
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const row of rows) {
+    const key = row.supermarket_name.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(row.supermarket_name);
+  }
+
+  return unique.slice(0, limit);
+}
+
+/**
+ * Elimina una compra del historial.
+ * Los artículos desaparecen por la cascada de la FK, no con otro DELETE.
+ */
+export async function deleteCompletedListRow(tx: Tx, id: string): Promise<number> {
+  const result = await tx.run(
+    `DELETE FROM lists WHERE id = ? AND status = 'completed'`,
+    [id],
   );
   return result.changes;
 }

@@ -3,6 +3,8 @@ import {
   canCancelShopping,
   canDeleteItem,
   canDeleteList,
+  canDeletePurchase,
+  canFinishPurchase,
   canRenameItem,
   canRenameList,
   canRestoreItem,
@@ -52,5 +54,26 @@ describe('reglas de ciclo de vida', () => {
     expect(canCancelShopping({ status: 'shopping' })).toBeNull();
     expect(canCancelShopping({ status: 'draft' })).toBe('INVALID_STATE');
     expect(canCancelShopping({ status: 'completed' })).toBe('LIST_COMPLETED');
+  });
+
+  it('finalizar exige compra en curso, artículos y confirmación si no hay marcados', () => {
+    expect(canFinishPurchase({ status: 'shopping' }, 3, 1, false)).toBeNull();
+    expect(canFinishPurchase({ status: 'shopping' }, 3, 0, true)).toBeNull();
+    expect(canFinishPurchase({ status: 'shopping' }, 3, 0, false)).toBe('NO_CHECKED');
+    expect(canFinishPurchase({ status: 'shopping' }, 0, 0, true)).toBe('EMPTY_LIST');
+    expect(canFinishPurchase({ status: 'draft' }, 3, 1, false)).toBe('INVALID_STATE');
+    expect(canFinishPurchase({ status: 'completed' }, 3, 1, false)).toBe('LIST_COMPLETED');
+  });
+
+  it('evalúa las guardas de finalizar en orden: estado, artículos y marcados', () => {
+    expect(canFinishPurchase({ status: 'shopping' }, 0, 0, false)).toBe('EMPTY_LIST');
+    expect(canFinishPurchase({ status: 'draft' }, 3, 0, false)).toBe('INVALID_STATE');
+    expect(canFinishPurchase({ status: 'completed' }, 3, 0, false)).toBe('LIST_COMPLETED');
+  });
+
+  it('solo se elimina una compra completada', () => {
+    expect(canDeletePurchase({ status: 'completed' })).toBeNull();
+    expect(canDeletePurchase({ status: 'draft' })).toBe('INVALID_STATE');
+    expect(canDeletePurchase({ status: 'shopping' })).toBe('INVALID_STATE');
   });
 });

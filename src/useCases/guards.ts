@@ -19,6 +19,16 @@ export function itemNameError(reason: ValidationFailure): AppError {
   );
 }
 
+export function supermarketNameError(reason: ValidationFailure): AppError {
+  return new AppError(
+    'VALIDATION',
+    reason === 'required'
+      ? es.validation.supermarketRequired
+      : es.validation.supermarketTooLong,
+    { reason, field: 'supermarketName' },
+  );
+}
+
 export function guardError(failure: GuardFailure): AppError {
   return new AppError(failure, guardMessage(failure));
 }

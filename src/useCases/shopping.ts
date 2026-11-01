@@ -1,7 +1,14 @@
+import { toLocalDateString, toLocalTimeString } from '@/domain/dates';
 import type { ShoppingItem } from '@/domain/item';
-import { canCancelShopping, canStartShopping, canToggleItem } from '@/domain/lifecycle';
+import {
+  canCancelShopping,
+  canFinishPurchase,
+  canStartShopping,
+  canToggleItem,
+} from '@/domain/lifecycle';
 import type { ShoppingList } from '@/domain/list';
 import { progressFromCounts, type Progress } from '@/domain/progress';
+import { validateSupermarketName } from '@/domain/validation';
 import {
   clearItemChecks,
   countItemProgress,
@@ -13,11 +20,12 @@ import {
   cancelShoppingRow,
   findActiveShoppingId,
   findListById,
+  finishShoppingRow,
   startShoppingRow,
   touchList,
 } from '@/infrastructure/repositories/listsRepository';
 import { AppError } from '@/lib/errors';
-import { guardError } from '@/useCases/guards';
+import { guardError, supermarketNameError } from '@/useCases/guards';
 import type { UseCaseDeps } from '@/useCases/types';
 
 export interface CheckItemResult {
@@ -25,12 +33,19 @@ export interface CheckItemResult {
   progress: Progress;
 }
 
+export interface FinishPurchaseInput {
+  listId: string;
+  supermarketName: string;
+  confirmZeroChecked: boolean;
+}
+
 /**
  * Inicia la compra de una lista en borrador.
  *
  * La guarda comprueba el estado, que haya artículos y que no exista otra
- * compra activa. El índice único parcial de SQLite es la última red: aunque
- * dos ventanas intentaran empezar a la vez, solo una transacción puede ganar.
+ * compra activa. El índice único parcial de SQLite respalda esa comprobación:
+ * la cola serial y `BEGIN IMMEDIATE` impiden que dos escrituras se solapen, y
+ * el índice mantiene la garantía estructural de una sola compra activa.
  */
 export async function startShopping(
   deps: UseCaseDeps,
@@ -134,6 +149,84 @@ export async function setItemChecked(
         updatedAtUtc: nowUtc,
       },
       progress: progressFromCounts(counts.total, counts.checked),
+    };
+  });
+}
+
+/**
+ * Finaliza la compra y la convierte en el registro histórico.
+ *
+ * Todo ocurre dentro de una transacción: si algo falla después de escribir,
+ * el rollback deja la lista en `shopping` y no queda una compra a medias.
+ */
+export async function finishPurchase(
+  deps: UseCaseDeps,
+  input: FinishPurchaseInput,
+): Promise<ShoppingList> {
+  return deps.database.mutate(async (tx) => {
+    const list = await findListById(tx, input.listId);
+    if (!list) {
+      throw new AppError('NOT_FOUND', undefined, { listId: input.listId });
+    }
+
+    // Doble toque: la compra ya está cerrada. Se devuelve tal cual sin
+    // escribir, para que repetir la acción no duplique ni muestre error.
+    if (list.status === 'completed') {
+      return list;
+    }
+
+    const counts = await countItemProgress(tx, input.listId);
+    const failure = canFinishPurchase(
+      list,
+      counts.total,
+      counts.checked,
+      input.confirmZeroChecked,
+    );
+    if (failure) {
+      throw guardError(failure);
+    }
+
+    const validation = validateSupermarketName(input.supermarketName);
+    if (!validation.ok) {
+      throw supermarketNameError(validation.reason);
+    }
+
+    const now = deps.clock.now();
+    const nowUtc = now.getTime();
+    const localDate = toLocalDateString(now);
+    const localTime = toLocalTimeString(now);
+
+    const changes = await finishShoppingRow(tx, {
+      id: input.listId,
+      nowUtc,
+      localDate,
+      localTime,
+      supermarketName: validation.value,
+    });
+
+    if (changes !== 1) {
+      // Defensa del contrato: el `UPDATE` va condicionado a `shopping` y debe
+      // afectar exactamente a una fila. Si no lo hace, se relee dentro de la
+      // misma transacción para devolver la compra ya cerrada (idempotencia)
+      // o el error de estado correspondiente.
+      const current = await findListById(tx, input.listId);
+      if (!current) {
+        throw new AppError('NOT_FOUND', undefined, { listId: input.listId });
+      }
+      if (current.status === 'completed') {
+        return current;
+      }
+      throw guardError('INVALID_STATE');
+    }
+
+    return {
+      ...list,
+      status: 'completed',
+      updatedAtUtc: nowUtc,
+      completedAtUtc: nowUtc,
+      completedLocalDate: localDate,
+      completedLocalTime: localTime,
+      supermarketName: validation.value,
     };
   });
 }

@@ -12,3 +12,9 @@ export function itemNameErrorMessage(reason: ValidationFailure): string {
     ? es.validation.itemNameRequired
     : es.validation.itemNameTooLong;
 }
+
+export function supermarketNameErrorMessage(reason: ValidationFailure): string {
+  return reason === 'required'
+    ? es.validation.supermarketRequired
+    : es.validation.supermarketTooLong;
+}

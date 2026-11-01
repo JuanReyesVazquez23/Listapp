@@ -84,3 +84,40 @@ export function canCancelShopping(list: StatusLike): GuardFailure | null {
   }
   return list.status === 'completed' ? 'LIST_COMPLETED' : 'INVALID_STATE';
 }
+
+/**
+ * Finalizar exige una compra en curso, con artículos y, si no hay ninguno
+ * marcado, una confirmación explícita del usuario.
+ *
+ * El caso de uso resuelve antes una lista ya `completed` como éxito
+ * idempotente; si se invoca esta guarda sin ese atajo, devuelve
+ * `LIST_COMPLETED` igual que las demás transiciones.
+ */
+export function canFinishPurchase(
+  list: StatusLike,
+  itemCount: number,
+  checkedCount: number,
+  confirmZeroChecked: boolean,
+): GuardFailure | null {
+  if (list.status === 'completed') {
+    return 'LIST_COMPLETED';
+  }
+  if (list.status !== 'shopping') {
+    return 'INVALID_STATE';
+  }
+  if (itemCount < 1) {
+    return 'EMPTY_LIST';
+  }
+  if (checkedCount === 0 && !confirmZeroChecked) {
+    return 'NO_CHECKED';
+  }
+  return null;
+}
+
+/**
+ * Solo una compra completada se elimina, y solo desde el historial.
+ * Una lista activa se borra por la ruta de listas, con su propia guarda.
+ */
+export function canDeletePurchase(list: StatusLike): GuardFailure | null {
+  return list.status === 'completed' ? null : 'INVALID_STATE';
+}

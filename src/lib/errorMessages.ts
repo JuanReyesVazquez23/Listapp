@@ -22,6 +22,8 @@ export function toUserMessage(error: unknown, fallback: string = es.errors.gener
       return es.errors.lastItemInShopping;
     case 'NO_CHECKED':
       return es.errors.noChecked;
+    case 'EMPTY_LIST':
+      return es.errors.emptyList;
     case 'DB_BROKEN':
     case 'DB_TIMEOUT':
       return es.errors.dbBroken;

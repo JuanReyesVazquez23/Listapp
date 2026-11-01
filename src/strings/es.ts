@@ -84,9 +84,40 @@ export const es = {
     emptyTitle: 'Esta compra no tiene artículos',
     emptyBody: 'Añade uno para continuar.',
   },
+  finish: {
+    title: 'Finalizar compra',
+    summary: (checked: number, unchecked: number) =>
+      `${checked === 1 ? '1 comprado' : `${checked} comprados`} · ${unchecked} sin comprar`,
+    supermarketLabel: 'Supermercado',
+    supermarketPlaceholder: '¿Dónde has comprado?',
+    suggestionsLabel: 'Supermercados recientes',
+    suggestionLabel: (name: string) => `Usar ${name}`,
+    uncheckedNotice: 'Se guardarán como no comprados.',
+    zeroCheckedNotice: 'No has marcado ningún artículo.',
+    zeroCheckedConfirm: 'Se guardará la compra con 0 comprados. ¿Continuar?',
+    zeroCheckedContinue: 'Finalizar con 0 comprados',
+    submit: 'Finalizar compra',
+    submitting: 'Guardando…',
+    savedAnnouncement: 'Compra guardada',
+  },
+  purchase: {
+    title: 'Compra',
+    optionsLabel: 'Opciones de la compra',
+    checkedSection: 'Comprados',
+    uncheckedSection: 'Sin comprar',
+    progress: (checked: number, total: number) => `${checked} de ${total} comprados`,
+    rowLabel: (date: string, supermarket: string, progress: string) =>
+      `${date}, ${supermarket}, ${progress}`,
+    itemLabel: (name: string, checked: boolean) =>
+      `${name}, ${checked ? 'comprado' : 'no comprado'}`,
+    deleteTitle: 'Eliminar compra',
+    deleteBody:
+      'Se borrarán la compra y sus artículos. Esta acción no se puede deshacer.',
+  },
   history: {
     emptyTitle: 'Todavía no has finalizado ninguna compra',
     emptyBody: 'Cuando termines una compra, aparecerá aquí con la fecha y el supermercado.',
+    emptyAction: 'Ir a Listas',
   },
   notFound: {
     header: 'No encontrado',
@@ -105,13 +136,15 @@ export const es = {
   errors: {
     generic: 'No se pudo guardar. Reintenta.',
     load: 'No se pudo cargar la lista.',
+    historyLoad: 'No se pudo cargar el historial.',
+    purchaseLoad: 'No se pudo cargar la compra.',
     listNotFound: 'Esta lista no existe o se ha eliminado.',
     invalidState: 'La lista ha cambiado. Vuelve a intentarlo.',
     listCompleted: 'Esta compra ya está finalizada.',
     activeShoppingExists: 'Ya hay otra compra en curso.',
     lastItemInShopping: 'No puedes borrar el último artículo durante la compra.',
     noChecked: 'No has marcado ningún artículo.',
-    emptyList: 'Añade al menos un artículo para empezar la compra.',
+    emptyList: 'La lista no tiene artículos.',
     dbBroken: 'La base de datos no responde. Reinicia la app.',
     dbBusy: 'La base de datos está ocupada. Reintenta.',
   },

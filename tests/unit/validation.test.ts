@@ -58,4 +58,22 @@ describe('validación de nombres', () => {
       value: 'Compra de Navidad',
     });
   });
+
+  it('valida el supermercado en el límite 1, 80 y 81', () => {
+    expect(validateSupermarketName('Mercadona')).toEqual({ ok: true, value: 'Mercadona' });
+    expect(validateSupermarketName('  Mercadona  ')).toEqual({
+      ok: true,
+      value: 'Mercadona',
+    });
+    expect(validateSupermarketName('a'.repeat(1))).toEqual({ ok: true, value: 'a' });
+    expect(validateSupermarketName('a'.repeat(NAME_LIMITS.supermarket))).toEqual({
+      ok: true,
+      value: 'a'.repeat(NAME_LIMITS.supermarket),
+    });
+    expect(validateSupermarketName('a'.repeat(NAME_LIMITS.supermarket + 1))).toEqual({
+      ok: false,
+      reason: 'too_long',
+    });
+    expect(validateSupermarketName('   ')).toEqual({ ok: false, reason: 'required' });
+  });
 });
