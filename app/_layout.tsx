@@ -46,6 +46,14 @@ export default function RootLayout() {
               title: es.newList.title,
             }}
           />
+          <Stack.Screen
+            name="lista/[id]/finalizar"
+            options={{
+              presentation: 'modal',
+              title: es.finish.title,
+            }}
+          />
+          <Stack.Screen name="compra/[id]" options={{ title: es.purchase.title }} />
           <Stack.Screen name="+not-found" options={{ title: es.notFound.header }} />
         </Stack>
       ) : state.status === 'failed' ? (

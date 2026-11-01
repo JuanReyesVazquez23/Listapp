@@ -22,8 +22,10 @@ import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
 import { TextField } from '@/components/ui/TextField';
 import type { ShoppingItem } from '@/domain/item';
+import { listDetailGuard } from '@/domain/navigation';
 import { validateListName } from '@/domain/validation';
 import { useListDetail } from '@/features/listas/hooks/useListDetail';
+import { applyGuard } from '@/features/navigation/applyGuard';
 import { isAppError } from '@/lib/errors';
 import { toUserMessage } from '@/lib/errorMessages';
 import { listNameErrorMessage } from '@/lib/validationMessages';
@@ -45,6 +47,7 @@ export default function ListDetailScreen() {
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { status, detail, error, reload } = useListDetail(listId);
   const insets = useSafeAreaInsets();
+  const listStatus = detail?.list.status;
 
   const [renamingList, setRenamingList] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -62,6 +65,21 @@ export default function ListDetailScreen() {
       }
     };
   }, []);
+
+  // Una compra cerrada ya no se edita y un id inexistente no tiene detalle:
+  // ambos casos se sustituyen por su destino canónico, nunca se apilan.
+  useEffect(() => {
+    if (!listId) {
+      return;
+    }
+    if (status === 'not_found') {
+      applyGuard('not_found', listId);
+      return;
+    }
+    if (listStatus) {
+      applyGuard(listDetailGuard(listStatus), listId);
+    }
+  }, [listId, listStatus, status]);
 
   const clearSnackTimer = useCallback(() => {
     if (snackTimer.current) {
@@ -178,6 +196,12 @@ export default function ListDetailScreen() {
           // Si la lectura de respaldo falla, se muestra el error original.
         }
       }
+      // Al empezar una compra el mensaje útil sigue siendo el de M2; el
+      // mensaje neutro de `errors.emptyList` se reserva para el cierre.
+      if (isAppError(startError) && startError.code === 'EMPTY_LIST') {
+        showSnack({ message: es.detail.startShoppingHint }, 4000);
+        return;
+      }
       showSnack({ message: toUserMessage(startError) }, 4000);
     } finally {
       setStartingShopping(false);
@@ -253,7 +277,7 @@ export default function ListDetailScreen() {
 
   const headerTitle = detail?.list.name ?? es.detail.title;
 
-  if (status === 'loading') {
+  if (status === 'loading' || listStatus === 'completed') {
     return (
       <Screen>
         <Stack.Screen options={{ title: es.detail.title }} />
@@ -264,22 +288,20 @@ export default function ListDetailScreen() {
     );
   }
 
+  // El id inexistente ya se redirige a `+not-found`; aquí solo queda el fallo
+  // de lectura, que sí permite reintentar sin salir de la pantalla.
   if (status === 'not_found' || status === 'error' || !detail) {
     return (
       <Screen>
         <Stack.Screen options={{ title: es.detail.title }} />
         <View style={styles.centered}>
           <EmptyState
-            icon={status === 'not_found' ? 'help-circle-outline' : 'alert-circle-outline'}
-            title={status === 'not_found' ? es.notFound.title : es.errors.load}
-            description={status === 'not_found' ? es.notFound.body : (error ?? '')}
-            actionLabel={status === 'not_found' ? es.notFound.action : es.boot.retry}
+            icon="alert-circle-outline"
+            title={es.errors.load}
+            description={error ?? ''}
+            actionLabel={es.boot.retry}
             onAction={() => {
-              if (status === 'not_found') {
-                router.replace('/');
-              } else {
-                void reload();
-              }
+              void reload();
             }}
           />
         </View>
