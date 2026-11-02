@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PurchaseItemRow } from '@/components/compras/PurchaseItemRow';
+import { CatalogChip, PurchaseTotalRow } from '@/components/compras/PurchaseTotalRow';
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
@@ -119,6 +120,8 @@ export default function PurchaseDetailScreen() {
   }
 
   const split = splitPurchaseItems(detail.items);
+  const catalogMode = detail.list.shoppingMode === 'catalog';
+  const unpricedCount = split.purchased.filter((item) => item.detail === null).length;
   const sections: PurchaseSection[] = [];
 
   if (split.purchased.length > 0) {
@@ -175,6 +178,15 @@ export default function PurchaseDetailScreen() {
             <AppText variant="body" style={styles.summary}>
               {es.finish.summary(split.purchased.length, split.notPurchased.length)}
             </AppText>
+            {catalogMode ? (
+              <View style={styles.catalog}>
+                <CatalogChip />
+                <PurchaseTotalRow
+                  totalCents={detail.list.totalCents}
+                  unpricedCount={unpricedCount}
+                />
+              </View>
+            ) : null}
           </View>
         }
         contentContainerStyle={styles.content}
@@ -219,6 +231,10 @@ const styles = StyleSheet.create({
   summary: {
     color: colors.textSecondary,
     marginTop: spacing[2],
+  },
+  catalog: {
+    marginTop: spacing[2],
+    gap: spacing[1],
   },
   sectionTitle: {
     color: colors.textSecondary,

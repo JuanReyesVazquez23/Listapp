@@ -24,7 +24,7 @@ describe('consultas del historial', () => {
     ctx.setNow(new Date(at));
     const list = await createList(ctx.deps, { name: `Compra ${supermarketName}` });
     const item = await addItem(ctx.deps, list.id, 'Leche');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, item.id, true);
     await finishPurchase(ctx.deps, {
       listId: list.id,
@@ -52,7 +52,7 @@ describe('consultas del historial', () => {
 
     const shopping = await createList(ctx.deps, { name: 'En compra' });
     await addItem(ctx.deps, shopping.id, 'Huevos');
-    await startShopping(ctx.deps, shopping.id);
+    await startShopping(ctx.deps, shopping.id, 'normal');
 
     const history = await ctx.manager.read(findCompletedPurchaseSummaries);
 
@@ -72,8 +72,9 @@ describe('consultas del historial', () => {
         await tx.run(
           `INSERT INTO lists (
              id, name, status, created_at_utc, updated_at_utc,
-             completed_at_utc, completed_local_date, completed_local_time, supermarket_name
-           ) VALUES (?, ?, 'completed', ?, ?, ?, ?, '10:30', 'Mercadona')`,
+             completed_at_utc, completed_local_date, completed_local_time, supermarket_name,
+             shopping_mode
+           ) VALUES (?, ?, 'completed', ?, ?, ?, ?, '10:30', 'Mercadona', 'normal')`,
           [
             `list-${index}`,
             `Compra ${index}`,

@@ -1,4 +1,5 @@
 import type { ShoppingItem } from '@/domain/item';
+import type { ShoppingList } from '@/domain/list';
 import {
   canAddItem,
   canDeleteItem,
@@ -23,8 +24,7 @@ export async function addItem(
   deps: UseCaseDeps,
   listId: string,
   name: string,
-): Promise<ShoppingItem> {
-  const validation = validateItemName(name);
+): Promise<ShoppingItem> {  const validation = validateItemName(name);
   if (!validation.ok) {
     throw itemNameError(validation.reason);
   }
@@ -145,8 +145,45 @@ export async function restoreItem(
       isChecked: checked,
       checkedAtUtc: checked ? item.checkedAtUtc : null,
       preferredSortOrder: item.sortOrder,
+      // Deshacer un borrado conserva precio y cantidad: la fila vuelve con el
+      // mismo detalle que tenía y el total no cambia.
+      detail: checked ? item.detail : null,
     });
     await touchList(tx, item.listId, nowUtc);
     return restored;
   });
+}
+
+export interface ItemDetailContext {
+  item: ShoppingItem;
+  list: ShoppingList;
+}
+
+/**
+ * Lee el artículo y su lista para el modal de detalle.
+ *
+ * El modal necesita el modo de compra y el estado de la lista para decidir si
+ * puede editar; devolverlos juntos evita una segunda consulta desde la UI y
+ * mantiene la guarda y los datos en la misma lectura.
+ */
+export async function getItemForDetail(
+  deps: UseCaseDeps,
+  itemId: string,
+): Promise<ItemDetailContext> {
+  const context = await deps.database.read(async (reader) => {
+    const found = await findItemWithListStatus(reader, itemId);
+    if (!found) {
+      return null;
+    }
+    const list = await findListById(reader, found.item.listId);
+    if (!list) {
+      return null;
+    }
+    return { item: found.item, list };
+  });
+
+  if (!context) {
+    throw new AppError('NOT_FOUND', undefined, { itemId });
+  }
+  return context;
 }

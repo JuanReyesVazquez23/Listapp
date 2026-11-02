@@ -29,6 +29,7 @@ flowchart TD
   A --> C
   C --> D["Modo compra"]
   D --> E["Finalizar compra (modal)"]
+  D --> I["Detalle de línea (modal)"]
   E --> F["Detalle de compra"]
   A --> G["Tab Historial"]
   G --> F
@@ -48,6 +49,7 @@ flowchart TD
 | `/lista/[id]` | `app/lista/[id]/index.tsx` | Detalle/edición | Stack | Existe; `draft` o `shopping`. Si `completed` → `/compra/[id]`. Si no existe → `+not-found`. |
 | `/lista/[id]/comprar` | `app/lista/[id]/comprar.tsx` | Modo compra | Stack, pantalla completa | Solo `shopping`. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; no existe → `+not-found`. |
 | `/lista/[id]/finalizar` | `app/lista/[id]/finalizar.tsx` | Finalizar compra | Modal | Solo `shopping`. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; no existe → `+not-found`. |
+| `/lista/[id]/detalle/[itemId]` | `app/lista/[id]/detalle/[itemId].tsx` | Detalle de línea | Modal | Solo `shopping` y modo `catalog`; el artículo debe existir. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; modo `normal` → `/lista/[id]/comprar`; no existe → `+not-found`. |
 | `/compra/[id]` | `app/compra/[id].tsx` | Detalle de compra | Stack | Solo `completed`. `draft` → `/lista/[id]`; `shopping` → `/lista/[id]/comprar`; no existe → `+not-found`. |
 | `*` | `app/+not-found.tsx` | No encontrado | Stack | — |
 
@@ -59,6 +61,9 @@ flowchart TD
 - Tras finalizar: se resetea el stack a Historial y se abre el detalle de la compra. “Atrás” vuelve al Historial, no al modo compra.
 - El botón atrás de Android en modo compra vuelve al detalle; **no cancela** la compra.
 - El modal de finalizar se puede cerrar sin finalizar; no se escribe nada hasta confirmar.
+- El detalle de línea se abre solo en modo `catalog`; en compra normal la fila sigue marcando directamente.
+- Atrás en el detalle de línea **no descarta en silencio**: pide confirmación, porque el modal se abre para elegir marca y precio.
+- Tras guardar, omitir o quitar, el detalle de línea se cierra solo y el modo compra relee al recuperar el foco.
 - Mientras `isFinishing` está activo, se bloquean el botón de finalizar, el gesto de cierre, el botón atrás y el cierre del modal.
 - Los deep links no son una función de producto, pero están guardados: una ruta con estado incorrecto redirige sin crash.
 
@@ -81,6 +86,13 @@ flowchart TD
   ├─ draft            → replace /lista/[id]
   ├─ completed        → replace /compra/[id]
   └─ no existe        → replace /+not-found
+
+/lista/[id]/detalle/[itemId]
+  ├─ shopping + catalog + artículo → renderiza modal
+  ├─ shopping + normal            → replace /lista/[id]/comprar
+  ├─ draft                        → replace /lista/[id]
+  ├─ completed                    → replace /compra/[id]
+  └─ no existe                    → replace /+not-found
 
 /compra/[id]
   ├─ completed        → renderiza detalle histórico
@@ -137,6 +149,10 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - “Empezar compra” si es `draft` y hay artículos;
   - “Continuar compra” si es `shopping`;
   - deshabilitado con ayuda contextual si no hay artículos.
+- Al pulsar “Empezar compra” se abre un selector con dos opciones:
+  - **Compra normal:** el flujo de siempre, marcar con un toque y sin precios.
+  - **Con La Sirena:** al marcar un artículo se abre su detalle para elegir marca, presentación, cantidad y precio.
+- La elección se recuerda en la lista como `shopping_mode` y no se puede cambiar a mitad de compra; para cambiarla hay que cancelar.
 - Si está en compra, aviso: “El progreso se guarda automáticamente”.
 - Si la lista está vacía: estado vacío “Añade tu primer artículo”.
 
@@ -155,6 +171,12 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - nombre del artículo;
   - al marcar: check blanco sobre verde, texto tachado y atenuado;
   - al desmarcar: vuelve al estado normal.
+- En modo `catalog`, la cabecera muestra el chip “Con La Sirena” y el total de la compra:
+  - “Total · RD$X.XX” si todas las líneas marcadas tienen precio;
+  - “Total parcial · RD$X.XX” y “N artículo(s) sin precio” si faltan algunas;
+  - “Aún no hay precios” si ninguna tiene precio.
+- En modo `catalog`, tocar una fila **abre el detalle** en vez de marcarla. El detalle es donde se elige marca, presentación, cantidad y precio; la fila muestra marca, cantidad, subtotal y check.
+- En modo `normal`, la fila marca y desmarca con un toque, igual que antes: ni chip, ni total, ni modal.
 - Las filas **no se mueven** al marcarse; se evita un salto bajo el pulgar.
 - Campo “Añadir artículo” al final, con teclado que no tapa la lista.
 - El modo compra de **M2** incluye empezar, marcar/desmarcar, progreso, añadir, recuperar y cancelar. El botón “Finalizar compra” y el modal de finalización se incorporan en **M3**.
@@ -163,11 +185,38 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - No se puede borrar el último artículo en modo compra; para vaciar, se cancela y se edita el borrador.
 - Si la lista queda sin artículos por una acción externa, se muestra un estado vacío.
 
-### 5.5 Finalizar compra (modal)
+### 5.5 Detalle de línea (modal)
+
+**Objetivo:** elegir la marca o presentación y dejar cantidad y precio sin escribir de más.
+
+- Se abre al tocar una fila en modo `catalog`.
+- Cabecera: “Detalle”, nombre del artículo y botón de cerrar. El gesto de cerrar y el botón Atrás piden confirmación para no perder lo escrito.
+- Sección **“Marcas y presentaciones”**:
+  - al abrir, la app busca **sola** con el nombre del artículo; el usuario no escribe nada (D-52);
+  - mientras busca: spinner y “Buscando en La Sirena…”;
+  - resultados: máximo 8, cada uno con marca, nombre, presentación y precio; se elige con un toque;
+  - al elegir: se rellenan marca, precio y cantidad `1`, y la unidad queda en “Unidad”;
+  - si no hay resultados: “No encontramos presentaciones para «pan»” y se ofrece el formulario manual.
+- El campo **“Buscar en La Sirena”** solo corrige la consulta: no busca mientras se escribe; hay que pulsar “Buscar”.
+- Si la red falla:
+  - “Sin conexión. Puedes continuar a mano.”, “La Sirena tardó demasiado…” o “No se pudo consultar el catálogo…”;
+  - botón “Reintentar”;
+  - el formulario manual sigue visible y usable.
+- Formulario manual: marca (opcional), cantidad, precio por unidad y unidad (`Unidad`, `Libra`, `Kilogramo`, `Litro`). El subtotal se actualiza en vivo.
+- Acciones:
+  - **“Guardar detalle”** valida, marca el artículo y cierra;
+  - **“Omitir”** marca sin precio y cierra (solo si aún no estaba marcado);
+  - **“Quitar datos”** borra marca, cantidad y precio sin desmarcar;
+  - **“Quitar de la compra”** desmarca el artículo y cierra.
+- Errores por campo debajo de cada control; el botón no envía un formulario inválido.
+- Si la lista ya no admite edición (compra cerrada o modo normal), el modal redirige sin escribir.
+
+### 5.6 Finalizar compra (modal)
 
 **Objetivo:** cerrar la compra con el supermercado y la fecha.
 
 - Resumen: “8 comprados · 2 sin comprar”.
+- En modo `catalog`, bajo el resumen: chip “Con La Sirena” y total de la compra, con el mismo formato exacto/parcial/sin precios que en el modo compra.
 - Campo “Supermercado”:
   - obligatorio;
   - `trim` y máximo 80;
@@ -184,7 +233,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - Si la lista ya estaba completada (doble toque o carrera): se trata como éxito y se navega al detalle.
 - Al confirmar: háptico de éxito y anuncio accesible “Compra guardada”.
 
-### 5.6 Historial
+### 5.7 Historial
 
 **Objetivo:** recordar compras pasadas.
 
@@ -194,32 +243,34 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - “27 oct 2026 · 18:42”;
   - supermercado;
   - “8 de 10 comprados”;
+  - en compras con La Sirena: chip “Con La Sirena” y total (“Total …”, “Total parcial …” o “Aún no hay precios”);
   - chevron.
 - Orden: `completed_at_utc` descendente.
 - Sin paginación en el MVP; se cargan todas las compras completadas.
 - Estado vacío: “Todavía no has finalizado ninguna compra”, con CTA a Listas.
 - No muestra borradores ni compras activas.
 
-### 5.7 Detalle de compra
+### 5.8 Detalle de compra
 
 **Objetivo:** consultar qué se compró y qué no.
 
 - Cabecera: supermercado y fecha completa:
   - “martes, 27 de octubre de 2026, 18:42”.
 - Resumen: “8 comprados · 2 sin comprar”.
-- Sección “Comprados”: artículos marcados, con check.
+- En compras con La Sirena: chip “Con La Sirena” y total guardado, con el mismo formato exacto/parcial/sin precios.
+- Sección “Comprados”: artículos marcados, con check. Cada línea con detalle muestra “Marca · cantidad unidad · subtotal”.
 - Sección “Sin comprar”: artículos no marcados, atenuados.
 - Solo lectura: no se puede editar, marcar ni renombrar.
 - Menú “Eliminar compra” con confirmación.
 - Si la compra no existe: `+not-found`.
 
-### 5.8 No encontrado
+### 5.9 No encontrado
 
 - “Esta lista no existe o se ha eliminado”.
 - Botón “Volver a Listas”.
 - No muestra una pantalla vacía ni un error técnico.
 
-### 5.9 Errores de base de datos y versión
+### 5.10 Errores de base de datos y versión
 
 - **Error de arranque:** “No se pudo abrir la base de datos”, explicación breve y “Reintentar”.
 - **Versión no compatible:** “Versión no compatible”, versión detectada y requerida, instrucciones para instalar el APK más reciente (`adb install -r`). Sin botón muerto de “Actualizar”.
@@ -343,7 +394,9 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | `ProgressBar` | Altura 8, track `brand.100`, fill `brand.600`, etiqueta “7 de 12” y porcentaje accesible. |
 | `ListCard` | Nombre, número de artículos, badge de estado; borde `neutral.200`. |
 | `ItemRow` | Nombre, edición inline, eliminar; memorizado. |
-| `PurchaseRow` | Fecha completa, supermercado, “8 de 10 comprados”, chevron. |
+| `PurchaseRow` | Fecha completa, supermercado, “8 de 10 comprados”, total y chip de catálogo si aplica, chevron. |
+| `ItemDetailForm` | Marcas ya buscadas, selección, formulario manual, subtotal y acciones. |
+| `PurchaseTotalRow` | Total exacto, parcial o “Aún no hay precios”; `CatalogChip` “Con La Sirena”. |
 | `EmptyState` | Icono, título, explicación y CTA. |
 | `Snackbar` | Errores no bloqueantes y “Deshacer”; `accessibilityLiveRegion="polite"`. |
 | `SupermarketInput` | Campo + chips de sugerencias. |
@@ -373,10 +426,13 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 - Objetivo táctil mínimo **48 × 48 dp**; filas de 56.
 - Etiquetas visibles en todos los campos; el placeholder no sustituye a la etiqueta.
 - `CheckboxRow`:
-  - `accessibilityRole="checkbox"`;
+  - `accessibilityRole="checkbox"` en compra normal;
   - `accessibilityState={{ checked }}`;
   - etiqueta “Leche, comprado” / “Leche, no comprado”;
   - pista “Toca para cambiar”.
+- En modo catálogo, la fila es un botón: “Abre el detalle de Leche, sin precio” y pista “Toca para elegir marca, cantidad y precio”.
+- Las tarjetas de presentación son botones con etiqueta “Elegir Bimbo, Pan Blanco, RD$175.25” y estado `selected`.
+- El total se anuncia como una sola frase: “Total parcial · RD$3.00. 2 artículos sin precio”.
 - `ProgressBar`:
   - `accessibilityRole="progressbar"`;
   - `accessibilityValue` con mínimo, máximo y actual.
@@ -402,6 +458,8 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 - [ ] “Reducir movimiento” desactiva animaciones decorativas.
 - [ ] Los mensajes de error se leen y no dependen del color.
 - [ ] Las confirmaciones destructivas se pueden cancelar.
+- [ ] Los resultados del catálogo se anuncian y se pueden elegir con TalkBack.
+- [ ] “Sin conexión” no impide completar marca, cantidad y precio a mano.
 
 ## 8. Microcopy
 
@@ -412,6 +470,10 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Vacío de listas | “Aún no hay listas”, “Crea una para empezar tu próxima compra.”, “Crear mi primera lista” |
 | Nueva lista | “Nombre de la lista”, “Ej. Compra semanal”, “Crear” |
 | Detalle | “Borrador”, “En compra”, “Añadir artículo”, “Empezar compra”, “Continuar compra” |
+| Modo de compra | “Compra normal”, “Con La Sirena”, “Elige cómo quieres comprar” |
+| Detalle de línea | “Detalle”, “Marcas y presentaciones”, “Buscar en La Sirena”, “Guardar detalle”, “Omitir”, “Quitar datos”, “Quitar de la compra” |
+| Total | “Total · RD$5.50”, “Total parcial · RD$3.00”, “2 artículos sin precio”, “Aún no hay precios”, “Con La Sirena” |
+| Catálogo sin red | “Sin conexión. Puedes continuar a mano.”, “Reintentar” |
 | Compra | “Compra”, “7 de 12”, “Finalizar compra”, “Cancelar compra” |
 | Cancelar | “Se desmarcarán todos los artículos y la lista volverá a borrador. ¿Cancelar la compra?” |
 | Finalizar | “Supermercado”, “¿Dónde has comprado?”, “8 comprados · 2 sin comprar”, “Se guardarán como no comprados” |
@@ -438,6 +500,9 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Compra sin marcados | Progreso 0 de N; el botón Finalizar sigue disponible con confirmación. |
 | Error de escritura | Snackbar; la UI no cambia; se puede reintentar. |
 | Error de BD | Pantalla bloqueante con instrucciones; no se borra la BD. |
+| Catálogo buscando | Spinner y “Buscando en La Sirena…”; el formulario manual sigue disponible. |
+| Catálogo sin resultados | “No encontramos presentaciones para «pan»” y el formulario manual. |
+| Catálogo con error | Aviso de red/timeout, “Reintentar” y formulario manual; nunca bloquea el marcado. |
 | Ruta inválida | Redirección segura o `+not-found`. |
 
 ## 10. Teclado, safe areas y pantallas
@@ -464,3 +529,6 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Formularios | Inputs controlados + validadores puros; sin React Hook Form/Zod. |
 | Fecha | Formateador propio en español; sin `Intl` en la UI. |
 | Historial | `SectionList` por mes; sin paginación. |
+| Modo de compra | Selector al empezar; fijo hasta cerrar o cancelar. |
+| Catálogo | Ayuda opcional, nunca paso obligatorio; búsqueda automática y máximo 8 resultados. |
+| Total | Solo en compras con La Sirena; exacto, parcial o “Aún no hay precios”. |

@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
+import { CatalogChip, PurchaseTotalRow } from '@/components/compras/PurchaseTotalRow';
 import { formatHistoryRow } from '@/domain/dates';
 import type { ListSummary } from '@/domain/list';
+import { formatCents } from '@/domain/money';
 import { es } from '@/strings/es';
 import { colors, layout, spacing } from '@/theme/tokens';
 
@@ -20,11 +22,22 @@ export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
   );
   const supermarket = purchase.supermarketName ?? '';
   const progressLabel = es.purchase.progress(purchase.checkedCount, purchase.itemCount);
+  const catalogMode = purchase.shoppingMode === 'catalog';
+  const totalLabel = !catalogMode
+    ? undefined
+    : purchase.totalCents === null
+      ? es.total.noPrices
+      : formatCents(purchase.totalCents);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={es.purchase.rowLabel(dateLabel, supermarket, progressLabel)}
+      accessibilityLabel={es.purchase.rowLabel(
+        dateLabel,
+        supermarket,
+        progressLabel,
+        totalLabel,
+      )}
       onPress={() => onPress(purchase.id)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
@@ -38,6 +51,19 @@ export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
         <AppText variant="caption" style={styles.progress}>
           {progressLabel}
         </AppText>
+        {catalogMode ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={styles.catalog}
+          >
+            <CatalogChip />
+            <PurchaseTotalRow
+              totalCents={purchase.totalCents}
+              unpricedCount={purchase.unpricedCheckedCount}
+            />
+          </View>
+        ) : null}
       </View>
       <Ionicons
         name="chevron-forward"
@@ -74,5 +100,9 @@ const styles = StyleSheet.create({
   },
   progress: {
     color: colors.textSecondary,
+  },
+  catalog: {
+    marginTop: spacing[1],
+    gap: spacing[1],
   },
 });

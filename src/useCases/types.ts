@@ -1,4 +1,5 @@
 import type { DatabaseManager } from '@/infrastructure/databaseManager';
+import type { CatalogClient } from '@/domain/catalog';
 import type { Clock } from '@/lib/clock';
 import type { IdGenerator } from '@/lib/ids';
 
@@ -7,4 +8,5 @@ export interface UseCaseDeps {
   database: DatabaseManager;
   clock: Clock;
   createId: IdGenerator;
+  catalog: CatalogClient;
 }

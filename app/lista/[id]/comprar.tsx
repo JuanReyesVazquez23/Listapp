@@ -14,6 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AddItemBar } from '@/components/listas/AddItemBar';
 import { ProgressBar } from '@/components/listas/ProgressBar';
 import { ShoppingItemRow } from '@/components/listas/ShoppingItemRow';
+import {
+  CatalogChip,
+  PurchaseTotalRow,
+} from '@/components/compras/PurchaseTotalRow';
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
@@ -21,6 +25,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
 import { shoppingGuard } from '@/domain/navigation';
+import { computePurchaseTotal } from '@/domain/purchase';
 import { useShopping } from '@/features/listas/hooks/useShopping';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { toUserMessage } from '@/lib/errorMessages';
@@ -34,6 +39,8 @@ export default function ShoppingScreen() {
   const { status, detail, progress, error, pendingItemIds, toggleItem, addItem, cancel, reload } =
     useShopping(listId);
   const listStatus = detail?.list.status;
+  const catalogMode = detail?.list.shoppingMode === 'catalog';
+  const total = computePurchaseTotal(detail?.items ?? []);
 
   const [snack, setSnack] = useState<string | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +101,23 @@ export default function ShoppingScreen() {
       })();
     },
     [showSnack, toggleItem],
+  );
+
+  /**
+   * En modo catálogo, tocar la fila abre el detalle en vez de marcarla: la
+   * marca sin precio no es un estado que el usuario pueda provocar por error.
+   */
+  const openItemDetail = useCallback(
+    (itemId: string) => {
+      if (!listId) {
+        return;
+      }
+      router.push({
+        pathname: '/lista/[id]/detalle/[itemId]',
+        params: { id: listId, itemId },
+      });
+    },
+    [listId],
   );
 
   const confirmCancel = useCallback(() => {
@@ -201,6 +225,8 @@ export default function ShoppingScreen() {
               item={item}
               pending={pendingItemIds.has(item.id)}
               onToggle={handleToggle}
+              catalogMode={catalogMode}
+              onOpenDetail={openItemDetail}
             />
           )}
           keyboardShouldPersistTaps="handled"
@@ -213,9 +239,20 @@ export default function ShoppingScreen() {
               <AppText variant="caption" style={styles.hint}>
                 {es.shopping.autoSave}
               </AppText>
+              {catalogMode ? (
+                <View style={styles.catalogChip}>
+                  <CatalogChip />
+                </View>
+              ) : null}
               <View style={styles.progress}>
                 <ProgressBar progress={progress} />
               </View>
+              {catalogMode ? (
+                <PurchaseTotalRow
+                  totalCents={total.totalCents}
+                  unpricedCount={total.unpricedCount}
+                />
+              ) : null}
             </View>
           }
           ListEmptyComponent={
@@ -282,6 +319,9 @@ const styles = StyleSheet.create({
   },
   progress: {
     marginTop: spacing[4],
+  },
+  catalogChip: {
+    marginTop: spacing[2],
   },
   primaryAction: {
     paddingHorizontal: spacing[4],

@@ -22,6 +22,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
 import { TextField } from '@/components/ui/TextField';
 import type { ShoppingItem } from '@/domain/item';
+import type { ShoppingMode } from '@/domain/list';
 import { listDetailGuard } from '@/domain/navigation';
 import { validateListName } from '@/domain/validation';
 import { useListDetail } from '@/features/listas/hooks/useListDetail';
@@ -161,14 +162,49 @@ export default function ListDetailScreen() {
     router.push({ pathname: '/lista/[id]/comprar', params: { id: listId } });
   }, [listId]);
 
+  /**
+   * El modo se elige una sola vez y queda fijo durante la compra.
+   *
+   * El diálogo usa tres botones y se resuelve también al descartarlo con
+   * "Atrás"; así la pantalla no queda con el botón bloqueado esperando una
+   * respuesta que nunca llega.
+   */
+  const chooseShoppingMode = useCallback((): Promise<ShoppingMode | null> => {
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (mode: ShoppingMode | null) => {
+        if (!settled) {
+          settled = true;
+          resolve(mode);
+        }
+      };
+
+      Alert.alert(
+        es.shoppingMode.title,
+        es.shoppingMode.body,
+        [
+          { text: es.shoppingMode.normal, onPress: () => settle('normal') },
+          { text: es.shoppingMode.catalog, onPress: () => settle('catalog') },
+          { text: es.common.cancel, style: 'cancel', onPress: () => settle(null) },
+        ],
+        { cancelable: true, onDismiss: () => settle(null) },
+      );
+    });
+  }, []);
+
   const handleStartShopping = useCallback(async () => {
     if (!listId) {
       return;
     }
 
+    const mode = await chooseShoppingMode();
+    if (!mode) {
+      return;
+    }
+
     setStartingShopping(true);
     try {
-      await startShopping(appDeps, listId);
+      await startShopping(appDeps, listId, mode);
       openShopping();
     } catch (startError) {
       // Si otra lista ya está en compra, se ofrece ir a ella en vez de dejar
@@ -206,7 +242,7 @@ export default function ListDetailScreen() {
     } finally {
       setStartingShopping(false);
     }
-  }, [listId, openShopping, showSnack]);
+  }, [chooseShoppingMode, listId, openShopping, showSnack]);
 
   const startRenameList = () => {
     if (!detail) {

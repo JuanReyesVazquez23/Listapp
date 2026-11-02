@@ -21,7 +21,7 @@ describe('modo compra', () => {
     await addItem(ctx.deps, list.id, 'Leche');
     ctx.setNow(new Date('2026-10-28T10:00:00'));
 
-    const started = await startShopping(ctx.deps, list.id);
+    const started = await startShopping(ctx.deps, list.id, 'normal');
 
     expect(started.status).toBe('shopping');
     expect(started.updatedAtUtc).toBe(new Date('2026-10-28T10:00:00').getTime());
@@ -33,7 +33,7 @@ describe('modo compra', () => {
   it('rechaza empezar una lista vacía sin escribir', async () => {
     const list = await createList(ctx.deps, { name: 'Vacía' });
 
-    await expect(startShopping(ctx.deps, list.id)).rejects.toMatchObject({
+    await expect(startShopping(ctx.deps, list.id, 'normal')).rejects.toMatchObject({
       code: 'EMPTY_LIST',
     });
 
@@ -46,9 +46,9 @@ describe('modo compra', () => {
     const second = await createList(ctx.deps, { name: 'Segunda' });
     await addItem(ctx.deps, first.id, 'Leche');
     await addItem(ctx.deps, second.id, 'Pan');
-    await startShopping(ctx.deps, first.id);
+    await startShopping(ctx.deps, first.id, 'normal');
 
-    await expect(startShopping(ctx.deps, second.id)).rejects.toMatchObject({
+    await expect(startShopping(ctx.deps, second.id, 'normal')).rejects.toMatchObject({
       code: 'ACTIVE_SHOPPING_EXISTS',
     });
 
@@ -59,9 +59,9 @@ describe('modo compra', () => {
   it('solo permite iniciar desde borrador', async () => {
     const shopping = await createList(ctx.deps, { name: 'En compra' });
     await addItem(ctx.deps, shopping.id, 'Leche');
-    await startShopping(ctx.deps, shopping.id);
+    await startShopping(ctx.deps, shopping.id, 'normal');
 
-    await expect(startShopping(ctx.deps, shopping.id)).rejects.toMatchObject({
+    await expect(startShopping(ctx.deps, shopping.id, 'normal')).rejects.toMatchObject({
       code: 'INVALID_STATE',
     });
   });
@@ -71,7 +71,7 @@ describe('modo compra', () => {
     const milk = await addItem(ctx.deps, list.id, 'Leche');
     await addItem(ctx.deps, list.id, 'Pan');
     await addItem(ctx.deps, list.id, 'Huevos');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     ctx.setNow(new Date('2026-10-28T11:00:00'));
 
     const checked = await setItemChecked(ctx.deps, milk.id, true);
@@ -110,7 +110,7 @@ describe('modo compra', () => {
     await ctx.manager.mutate((tx) =>
       tx.run(
         `UPDATE lists
-            SET status = 'completed', completed_at_utc = 1,
+            SET status = 'completed', shopping_mode = 'normal', completed_at_utc = 1,
                 completed_local_date = '2026-10-27',
                 completed_local_time = '18:42', supermarket_name = 'Mercadona'
           WHERE id = ?`,
@@ -127,7 +127,7 @@ describe('modo compra', () => {
     const list = await createList(ctx.deps, { name: 'Compra' });
     const milk = await addItem(ctx.deps, list.id, 'Leche');
     const bread = await addItem(ctx.deps, list.id, 'Pan');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, milk.id, true);
     await setItemChecked(ctx.deps, bread.id, true);
     ctx.setNow(new Date('2026-10-28T12:00:00'));
@@ -154,7 +154,7 @@ describe('modo compra', () => {
   it('permite añadir artículos durante la compra', async () => {
     const list = await createList(ctx.deps, { name: 'Compra' });
     await addItem(ctx.deps, list.id, 'Leche');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
 
     const late = await addItem(ctx.deps, list.id, 'Servilletas');
 
@@ -171,8 +171,8 @@ describe('modo compra', () => {
     await addItem(ctx.deps, second.id, 'Pan');
 
     const results = await Promise.allSettled([
-      startShopping(ctx.deps, first.id),
-      startShopping(ctx.deps, second.id),
+      startShopping(ctx.deps, first.id, 'normal'),
+      startShopping(ctx.deps, second.id, 'normal'),
     ]);
 
     const fulfilled = results.filter((result) => result.status === 'fulfilled');
@@ -188,7 +188,7 @@ describe('modo compra', () => {
     const list = await createList(ctx.deps, { name: 'Persistente' });
     const milk = await addItem(ctx.deps, list.id, 'Leche');
     await addItem(ctx.deps, list.id, 'Pan');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, milk.id, true);
     await ctx.manager.close();
 

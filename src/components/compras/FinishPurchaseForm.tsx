@@ -10,6 +10,7 @@ import {
 import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextField } from '@/components/ui/TextField';
+import { CatalogChip, PurchaseTotalRow } from '@/components/compras/PurchaseTotalRow';
 import { validateSupermarketName } from '@/domain/validation';
 import { supermarketNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
@@ -24,6 +25,10 @@ interface FinishPurchaseFormProps {
   isSubmitting: boolean;
   saveError: string | null;
   onSubmit(confirmZeroChecked: boolean): void;
+  /** Solo en compra con catálogo; la compra normal no muestra total. */
+  catalogMode?: boolean;
+  totalCents?: number | null;
+  unpricedCount?: number;
 }
 
 /**
@@ -42,6 +47,9 @@ export function FinishPurchaseForm({
   isSubmitting,
   saveError,
   onSubmit,
+  catalogMode = false,
+  totalCents = null,
+  unpricedCount = 0,
 }: FinishPurchaseFormProps) {
   const [confirmingZero, setConfirmingZero] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -76,6 +84,16 @@ export function FinishPurchaseForm({
       <AppText variant="bodyStrong" style={styles.summary}>
         {es.finish.summary(checkedCount, uncheckedCount)}
       </AppText>
+
+      {catalogMode ? (
+        <View style={styles.catalogSummary}>
+          <CatalogChip />
+          <PurchaseTotalRow
+            totalCents={totalCents}
+            unpricedCount={unpricedCount}
+          />
+        </View>
+      ) : null}
 
       <TextField
         label={es.finish.supermarketLabel}
@@ -201,6 +219,10 @@ const styles = StyleSheet.create({
   },
   summary: {
     color: colors.text,
+  },
+  catalogSummary: {
+    marginTop: spacing[2],
+    gap: spacing[1],
   },
   suggestions: {
     marginTop: spacing[2],

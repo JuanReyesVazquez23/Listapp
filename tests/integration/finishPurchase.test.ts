@@ -31,7 +31,7 @@ describe('finalizar compra', () => {
       const item = await addItem(ctx.deps, list.id, name);
       itemIds.push(item.id);
     }
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     return { listId: list.id, itemIds };
   }
 
@@ -275,7 +275,7 @@ describe('finalizar compra', () => {
     try {
       const list = await createList(deps, { name: 'Compra' });
       const item = await addItem(deps, list.id, 'Leche');
-      await startShopping(deps, list.id);
+      await startShopping(deps, list.id, 'normal');
       await setItemChecked(deps, item.id, true);
 
       adapter.failNextCommit();

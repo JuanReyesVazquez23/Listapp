@@ -1,7 +1,8 @@
-import type { ShoppingItem } from '@/domain/item';
-import type { ListStatus } from '@/domain/list';
+import type { ItemDetail, ShoppingItem } from '@/domain/item';
+import { isShoppingMode, type ListStatus, type ShoppingMode } from '@/domain/list';
 import {
   ITEM_COLUMNS,
+  ITEM_COLUMNS_ALIASED,
   mapItemRow,
   type ItemRow,
   type ItemWithListRow,
@@ -16,11 +17,20 @@ export interface InsertItemInput {
   isChecked?: boolean;
   checkedAtUtc?: number | null;
   preferredSortOrder?: number;
+  detail?: ItemDetail | null;
 }
 
 export interface ItemWithListStatus {
   item: ShoppingItem;
   listStatus: ListStatus;
+  shoppingMode: ShoppingMode | null;
+}
+
+export interface PricedTotals {
+  checked: number;
+  priced: number;
+  unpriced: number;
+  totalCents: number;
 }
 
 export async function findItemsByList(
@@ -50,9 +60,9 @@ export async function findItemWithListStatus(
   id: string,
 ): Promise<ItemWithListStatus | null> {
   const row = await reader.get<ItemWithListRow>(
-    `SELECT i.id, i.list_id, i.name, i.is_checked, i.checked_at_utc,
-            i.sort_order, i.created_at_utc, i.updated_at_utc,
-            l.status AS list_status
+    `SELECT ${ITEM_COLUMNS_ALIASED},
+            l.status AS list_status,
+            l.shopping_mode AS shopping_mode
        FROM items i
        JOIN lists l ON l.id = i.list_id
       WHERE i.id = ?`,
@@ -64,6 +74,10 @@ export async function findItemWithListStatus(
   return {
     item: mapItemRow(row),
     listStatus: row.list_status as ListStatus,
+    shoppingMode:
+      row.shopping_mode !== null && isShoppingMode(row.shopping_mode)
+        ? row.shopping_mode
+        : null,
   };
 }
 
@@ -96,7 +110,9 @@ export async function countItemProgress(
  * Escribe el estado de check de forma absoluta.
  *
  * No se usa `is_checked = NOT is_checked` para que dos toques rápidos no se
- * cancelen entre sí: el cliente envía el estado que quiere ver.
+ * cancelen entre sí: el cliente envía el estado que quiere ver. Al desmarcar
+ * se borra el detalle en la misma sentencia: una línea sin comprar no puede
+ * conservar marca ni precio, y el modelo lo respalda con un CHECK.
  */
 export async function setItemCheckedRow(
   tx: Tx,
@@ -104,12 +120,27 @@ export async function setItemCheckedRow(
   checked: boolean,
   nowUtc: number,
 ): Promise<number> {
-  const result = await tx.run(
-    `UPDATE items
-        SET is_checked = ?, checked_at_utc = ?, updated_at_utc = ?
-      WHERE id = ?`,
-    [checked ? 1 : 0, checked ? nowUtc : null, nowUtc, id],
-  );
+  const result = checked
+    ? await tx.run(
+        `UPDATE items
+            SET is_checked = 1, checked_at_utc = ?, updated_at_utc = ?
+          WHERE id = ?`,
+        [nowUtc, nowUtc, id],
+      )
+    : await tx.run(
+        `UPDATE items
+            SET is_checked = 0,
+                checked_at_utc = NULL,
+                brand = NULL,
+                quantity_milli = NULL,
+                unit_code = NULL,
+                unit_price_cents = NULL,
+                line_subtotal_cents = NULL,
+                catalog_product_id = NULL,
+                updated_at_utc = ?
+          WHERE id = ?`,
+        [nowUtc, id],
+      );
   return result.changes;
 }
 
@@ -121,7 +152,15 @@ export async function clearItemChecks(
 ): Promise<number> {
   const result = await tx.run(
     `UPDATE items
-        SET is_checked = 0, checked_at_utc = NULL, updated_at_utc = ?
+        SET is_checked = 0,
+            checked_at_utc = NULL,
+            brand = NULL,
+            quantity_milli = NULL,
+            unit_code = NULL,
+            unit_price_cents = NULL,
+            line_subtotal_cents = NULL,
+            catalog_product_id = NULL,
+            updated_at_utc = ?
       WHERE list_id = ? AND is_checked = 1`,
     [nowUtc, listId],
   );
@@ -131,13 +170,16 @@ export async function clearItemChecks(
 export async function insertItem(tx: Tx, input: InsertItemInput): Promise<ShoppingItem> {
   const checked = input.isChecked === true;
   const checkedAtUtc = checked ? (input.checkedAtUtc ?? input.nowUtc) : null;
+  const detail = checked ? (input.detail ?? null) : null;
   const sortOrder = await resolveSortOrder(tx, input.listId, input.preferredSortOrder);
 
   await tx.run(
     `INSERT INTO items (
       id, list_id, name, is_checked, checked_at_utc, sort_order,
-      created_at_utc, updated_at_utc
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      created_at_utc, updated_at_utc,
+      brand, quantity_milli, unit_code, unit_price_cents,
+      line_subtotal_cents, catalog_product_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.id,
       input.listId,
@@ -147,6 +189,12 @@ export async function insertItem(tx: Tx, input: InsertItemInput): Promise<Shoppi
       sortOrder,
       input.nowUtc,
       input.nowUtc,
+      detail?.brand ?? null,
+      detail?.quantityMilli ?? null,
+      detail?.unit ?? null,
+      detail?.unitPriceCents ?? null,
+      detail?.lineSubtotalCents ?? null,
+      detail?.catalogProductId ?? null,
     ],
   );
 
@@ -159,8 +207,7 @@ export async function insertItem(tx: Tx, input: InsertItemInput): Promise<Shoppi
     sortOrder,
     createdAtUtc: input.nowUtc,
     updatedAtUtc: input.nowUtc,
-    // La v1 inserta artículos sin detalle de línea.
-    detail: null,
+    detail,
   };
 }
 
@@ -175,6 +222,123 @@ export async function renameItemRow(
     [name, nowUtc, id],
   );
   return result.changes;
+}
+
+/**
+ * Marca un artículo con detalle dentro de una compra de catálogo.
+ *
+ * La condición de modo y estado viaja en el `WHERE`, no solo en la guarda del
+ * caso de uso: la cola serial impide que otra escritura se cuele entre la
+ * lectura y este `UPDATE`, pero la propia sentencia sigue siendo la última
+ * defensa. Un artículo ya marcado no se vuelve a marcar con otro detalle.
+ */
+export async function checkItemRow(
+  tx: Tx,
+  id: string,
+  detail: ItemDetail | null,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE items
+        SET is_checked = 1,
+            checked_at_utc = ?,
+            updated_at_utc = ?,
+            brand = ?,
+            quantity_milli = ?,
+            unit_code = ?,
+            unit_price_cents = ?,
+            line_subtotal_cents = ?,
+            catalog_product_id = ?
+      WHERE id = ?
+        AND is_checked = 0
+        AND EXISTS (
+          SELECT 1 FROM lists l
+           WHERE l.id = items.list_id
+             AND l.status = 'shopping'
+             AND l.shopping_mode = 'catalog'
+        )`,
+    [
+      nowUtc,
+      nowUtc,
+      detail?.brand ?? null,
+      detail?.quantityMilli ?? null,
+      detail?.unit ?? null,
+      detail?.unitPriceCents ?? null,
+      detail?.lineSubtotalCents ?? null,
+      detail?.catalogProductId ?? null,
+      id,
+    ],
+  );
+  return result.changes;
+}
+
+/**
+ * Cambia el detalle de una línea ya marcada. `detail = null` lo borra sin
+ * desmarcar: el artículo sigue comprado, pero el total pasa a ser parcial.
+ */
+export async function updateItemDetailRow(
+  tx: Tx,
+  id: string,
+  detail: ItemDetail | null,
+  nowUtc: number,
+): Promise<number> {
+  const result = await tx.run(
+    `UPDATE items
+        SET brand = ?,
+            quantity_milli = ?,
+            unit_code = ?,
+            unit_price_cents = ?,
+            line_subtotal_cents = ?,
+            catalog_product_id = ?,
+            updated_at_utc = ?
+      WHERE id = ?
+        AND is_checked = 1
+        AND EXISTS (
+          SELECT 1 FROM lists l
+           WHERE l.id = items.list_id
+             AND l.status = 'shopping'
+             AND l.shopping_mode = 'catalog'
+        )`,
+    [
+      detail?.brand ?? null,
+      detail?.quantityMilli ?? null,
+      detail?.unit ?? null,
+      detail?.unitPriceCents ?? null,
+      detail?.lineSubtotalCents ?? null,
+      detail?.catalogProductId ?? null,
+      nowUtc,
+      id,
+    ],
+  );
+  return result.changes;
+}
+
+/**
+ * Cuenta las líneas marcadas y suma solo las que tienen precio.
+ *
+ * `totalCents` es 0 cuando hay líneas con precio que suman cero; el caso de uso
+ * lo convierte en `null` únicamente si no hay ninguna línea con detalle.
+ */
+export async function findPricedTotals(tx: Tx, listId: string): Promise<PricedTotals> {
+  const row = await tx.get<PricedTotals>(
+    `SELECT
+       COALESCE(SUM(CASE WHEN is_checked = 1 THEN 1 ELSE 0 END), 0) AS checked,
+       COALESCE(SUM(CASE WHEN is_checked = 1 AND quantity_milli IS NOT NULL
+                         THEN 1 ELSE 0 END), 0) AS priced,
+       COALESCE(SUM(CASE WHEN is_checked = 1 AND quantity_milli IS NULL
+                         THEN 1 ELSE 0 END), 0) AS unpriced,
+       COALESCE(SUM(CASE WHEN is_checked = 1 AND quantity_milli IS NOT NULL
+                         THEN line_subtotal_cents ELSE 0 END), 0) AS totalCents
+     FROM items
+     WHERE list_id = ?`,
+    [listId],
+  );
+  return {
+    checked: row?.checked ?? 0,
+    priced: row?.priced ?? 0,
+    unpriced: row?.unpriced ?? 0,
+    totalCents: row?.totalCents ?? 0,
+  };
 }
 
 export async function deleteItemRow(tx: Tx, id: string): Promise<number> {

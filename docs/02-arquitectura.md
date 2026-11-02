@@ -2,7 +2,7 @@
 
 ## 1. Resumen
 
-Listapp es una app **local-first**: toda la información vive en SQLite, en el dispositivo. No hay servidor, autenticación ni sincronización. La arquitectura está pensada para que la app sea fácil de razonar, rápida en un móvil modesto y difícil de corromper.
+Listapp es una app **local-first**: toda la información de las listas vive en SQLite, en el dispositivo. No hay cuentas, autenticación ni sincronización. La única salida a la red es opcional: el catálogo de La Sirena durante una compra en modo `catalog`. La arquitectura está pensada para que la app sea fácil de razonar, rápida en un móvil modesto y difícil de corromper.
 
 La decisión central es:
 
@@ -16,7 +16,7 @@ Alrededor de eso:
 - **Dos tablas**: `lists` e `items`.
 - **Una lista completada es la compra histórica**; no hay una tabla `purchases` duplicada.
 - **Una sola compra activa** a la vez, garantizada por la base de datos.
-- **Sin red en ejecución**: ni analítica, ni recursos remotos, ni login.
+- **Sin red por defecto**: ni analítica, ni login, ni recursos remotos. Solo el catálogo opcional consulta un proxy propio.
 
 ## 2. Principios de arquitectura
 
@@ -50,6 +50,8 @@ Alrededor de eso:
 | Pruebas | **Jest + RNTL + `node:sqlite` + Maestro** | Detox | Maestro es suficiente para dos flujos y funciona sobre el APK. |
 | Build | **EAS Build en la nube** | Gradle local | Java 8 local no sirve; EAS evita mantener JDK/Android SDK. |
 | Distribución | **APK `preview` interno** | AAB/Play Store | El requisito es un APK instalable. |
+| Catálogo | **Proxy propio en Vercel sobre la API pública VTEX de La Sirena** | Llamar a La Sirena desde la app | El backend filtra la familia, normaliza precios y oculta la URL interna; la app nunca habla con VTEX. |
+| Dinero | **Enteros en céntimos (DOP)** | `number` con decimales | Evita errores de coma flotante en totales y subtotales; un solo redondeo por línea (D-44). |
 
 ## 4. Capas y dependencias
 
@@ -62,6 +64,7 @@ flowchart TD
   end
   subgraph U["Casos de uso"]
     UC["src/useCases<br/>validación + transacciones"]
+    CAT["src/useCases/catalog.ts<br/>consulta al proxy"]
   end
   subgraph D["Dominio"]
     DM["src/domain<br/>tipos, reglas, fechas"]
@@ -74,12 +77,15 @@ flowchart TD
     ADP["Adaptador expo-sqlite"]
     MIG["Migraciones<br/>user_version"]
     DB[("SQLite<br/>listapp.db")]
+    NET["catalogClient<br/>fetch al proxy"]
   end
   R --> C
   R --> H
   H --> UC
   UC --> DM
   UC --> Q
+  UC --> CAT
+  CAT --> NET
   Q --> TX
   TX --> REP
   REP --> ADP
@@ -98,8 +104,10 @@ flowchart TD
 | `src/components` | Componentes visuales reutilizables y accesibles. | Acceso a datos. |
 | `src/features/*/hooks` | Estado de pantalla, carga al enfocar, llamada a casos de uso. | SQL directo. |
 | `src/useCases` | Validación, coordinación, transacciones, captura de hora, errores tipados. | JSX, navegación, estilos. |
-| `src/domain` | Tipos, estados, reglas puras, validadores, progreso, formato de fechas. | Efectos secundarios, React, SQL. |
-| `src/infrastructure` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas. | Reglas de UI. |
+| `src/useCases/catalog.ts` | Valida la consulta y traduce el resultado del cliente a un `CatalogSearchOutcome`. | `fetch` directo, JSX. |
+| `api/` | Backend Vercel: valida `q`, consulta VTEX, filtra la familia y devuelve máx. 8 resultados. | Datos del usuario, JSX, SQL. |
+| `src/domain` | Tipos, estados, reglas puras, validadores, progreso, formato de fechas y de dinero. | Efectos secundarios, React, SQL, red. |
+| `src/infrastructure` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas y cliente del catálogo. | Reglas de UI. |
 | `src/lib` | `Clock`, generador de IDs, errores, hápticos, instrumentación. | Lógica de negocio. |
 | `src/theme` | Tokens de color, tipografía, espaciado, radios. | Componentes. |
 | `src/strings` | Todos los textos visibles en español. | Lógica. |
@@ -108,6 +116,9 @@ flowchart TD
 
 ```text
 listapp/
+  api/
+    catalog.ts                   # Handler Vercel: GET /api/catalog?q=…
+    _catalogCore.ts              # Reglas puras: normalización, filtro y precios
   app/
     _layout.tsx                  # Boot gate + Stack raíz + error boundary
     (tabs)/
@@ -117,9 +128,11 @@ listapp/
     lista/
       nueva.tsx                  # Modal crear lista
       [id]/
-        index.tsx                # Detalle/edición de lista
+        index.tsx                # Detalle/edición + selector de modo
         comprar.tsx              # Modo compra
         finalizar.tsx            # Modal finalizar compra
+        detalle/
+          [itemId].tsx           # Modal de marca, cantidad y precio
     compra/
       [id].tsx                   # Detalle de compra histórica
     +not-found.tsx
@@ -130,25 +143,28 @@ listapp/
       listas/                    # ListCard, ItemRow, ShoppingItemRow,
                                  # AddItemBar, ProgressBar, StatusBadge
       compras/                   # FinishPurchaseForm, HistoryList, PurchaseRow,
-                                 # PurchaseItemRow
+                                 # PurchaseItemRow, ItemDetailForm,
+                                 # PurchaseTotalRow (total y chip de catálogo)
     features/
       listas/hooks/              # useLists, useListDetail, useShopping,
                                  # useFinishPurchase, useHistory,
-                                 # usePurchaseDetail
+                                 # usePurchaseDetail, useItemDetail
       navigation/                # applyGuard: traduce las guardas a replace
-    useCases/                    # lists, items, shopping, history
-    domain/                      # list, item, purchase, lifecycle, navigation,
-                                 # validation, progress, date
+    useCases/                    # lists, items, shopping, history, catalog
+    domain/                      # list, item, purchase, catalog, money, quantity,
+                                 # lifecycle, navigation, validation, progress, dates
     infrastructure/              # Todo el acceso a SQLite y al almacenamiento local
       databaseManager.ts         # open / boot / close / estado
       serialQueue.ts             # cola única
       sqlDatabase.ts             # puerto: exec, run, all, get, transaction
       expoSqliteAdapter.ts       # implementación de producción
+      catalog/catalogClient.ts   # cliente HTTP del proxy; timeouts y abort
       migrations/001_initial.ts
+      migrations/002_item_details.ts
       repositories/              # listsRepository, itemsRepository
     theme/                       # tokens, typography
     strings/es.ts                # textos visibles
-    lib/                         # clock, ids, errors, haptics, perf
+    lib/                         # clock, ids, errors, haptics, perf, config
   tests/
     unit/
     integration/
@@ -160,6 +176,7 @@ listapp/
   assets/
   app.json
   eas.json
+  vercel.json                    # Build y ruta del handler api/catalog.ts
   tsconfig.json
   package.json
 ```
@@ -255,8 +272,22 @@ Para evitar re-renderizar 200 filas por un check:
 
 - Cancelar exige confirmación y se ejecuta en una sola transacción.
 - Primero se cambia `lists.status` de `shopping` a `draft` con un `UPDATE` condicionado.
-- Después se desmarcan todos los artículos y se limpia `checked_at_utc`.
+- Después se desmarcan todos los artículos, se limpia `checked_at_utc`, el detalle de línea y, en la lista, `shopping_mode` y `total_cents`.
 - Si la transacción falla, la lista sigue en compra con sus checks intactos.
+
+### 6.8 Catálogo de La Sirena
+
+El catálogo es **opcional y de solo lectura**; nunca participa en una transacción local.
+
+1. Al pulsar “Empezar compra”, la lista elige `normal` o `catalog`. El modo se guarda con el estado `shopping` y no cambia hasta cerrar o cancelar (D-35).
+2. En modo `catalog`, al abrir el detalle de un artículo, `useItemDetail` carga el ítem y su lista, y lanza **una** búsqueda automática con el nombre del artículo (D-52). El campo de búsqueda solo corrige la consulta.
+3. `searchCatalog` valida la consulta y llama a `catalogClient.search`, que hace `GET {EXPO_PUBLIC_CATALOG_API_URL}?q=…` con `AbortController`. Cada búsqueda cancela la anterior.
+4. El backend `api/catalog.ts` valida `q`, consulta VTEX con un timeout de 4.5 s, filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con un máximo de 8 productos.
+5. Elegir una presentación rellena marca, precio y cantidad 1 en el formulario. Guardar ejecuta `checkItem` con el detalle; si la línea ya estaba marcada, `updateItemDetail`.
+6. El total se calcula en el dominio con `computePurchaseTotal`: `null` si ninguna línea marcada tiene precio, parcial si faltan algunas, exacto si todas lo tienen. Se guarda en `lists.total_cents` al finalizar.
+7. Cualquier fallo de red, timeout o respuesta inválida deja el formulario manual disponible: la app **nunca** bloquea el marcado por el catálogo.
+
+La consulta al backend no pasa por la cola de SQLite ni abre transacción: es una lectura remota que solo alimenta la UI.
 
 ## 7. Contrato de transacción y cola
 
@@ -375,6 +406,7 @@ Las versiones se fijan con `npx expo install` para que coincidan con SDK 58. Las
 | `jest`, `jest-expo` | Unitarias, integración y componentes. |
 | `@testing-library/react-native` | Pruebas de componentes. |
 | `node:sqlite` (incluido en Node 24) | Adaptador de integración; sin dependencia nativa. |
+| `@vercel/node` | Tipos del handler `api/catalog.ts`; solo en desarrollo, no entra en el APK. |
 | Maestro CLI (externo) | E2E sobre el APK. |
 | EAS CLI (vía `npx`) | Build en la nube. |
 
@@ -459,6 +491,10 @@ Pasos:
 
 El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de lista, compra e historial, para validar cuenta, credenciales, SDK, paquete y entorno sobre una app usable.
 
+**Variables del APK:** `eas.json` fija `EXPO_PUBLIC_CATALOG_API_URL` en el perfil `preview`. Expo incrusta el valor en el bundle al compilar, así que cambiarlo exige un build nuevo; no se lee en ejecución desde el dispositivo.
+
+**Backend:** `api/catalog.ts` se despliega en el mismo proyecto Vercel que sirve `https://listapp-rose.vercel.app/api/catalog`. La variable de servidor `SIRENA_API_BASE_URL` apunta al dominio de La Sirena y **no** se expone al cliente. `vercel.json` declara el build de `api/catalog.ts` y su ruta.
+
 ### 11.3 Android
 
 - Android 7+ (API 24), `targetSdkVersion` 36 (el que fije SDK 58).
@@ -466,18 +502,22 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 - Edge-to-edge con safe areas.
 - Sin permisos sensibles: ni ubicación, ni cámara, ni contactos, ni micrófono.
 - `allowBackup=false`: coherente con “sin nube”, pero desinstalar borra los datos.
-- No se bloquea el permiso `INTERNET` en v1; la app no hace peticiones en ejecución, pero Expo/Herramientas pueden usarlo. Se puede endurecer en el futuro.
+- No se bloquea el permiso `INTERNET`: la compra normal no lo usa, pero el catálogo opcional de La Sirena lo necesita. Sin red, la app sigue funcionando y cae al formulario manual.
 
 ## 12. Seguridad y privacidad
 
-- **Sin red en ejecución:** no hay `fetch`, analítica, crash reporting ni recursos remotos.
+- **Red solo opcional:** la app no envía datos salvo en modo compra con catálogo, donde consulta el proxy propio con el nombre del artículo. No hay analítica, crash reporting ni recursos remotos.
 - **Sin cuentas:** no se recogen datos personales.
 - **SQL parametrizado:** los valores del usuario se pasan como parámetros; no se interpola texto en las consultas.
 - **Validación en dominio y en BD:** longitudes, estados y consistencia de checks.
+- **Catálogo sin datos de usuario:** el backend recibe solo `q`, no identificadores de lista ni de usuario. La URL de La Sirena vive en el servidor (`SIRENA_API_BASE_URL`) y no en el APK.
+- **Precios y totales:** se guardan en céntimos enteros; el total de catálogo se calcula al finalizar y queda inmutable en el historial.
 - **Base de datos no cifrada:** el contenido son listas de la compra; no se declaran datos sensibles. SQLCipher queda fuera del MVP.
 - **Deep links:** las rutas validan el estado y el id; no exponen información sensible.
 - **Backup del sistema desactivado:** `allowBackup=false`. La pérdida al desinstalar es un riesgo aceptado y documentado.
 - **Export/import:** v1.1, en JSON o copia del archivo SQLite; no contradice el modo offline.
+
+**Cambio de privacidad respecto a v1:** la app ya no es 100 % sin red. Solo en modo compra con catálogo se hace una petición HTTPS al proxy propio con el nombre del artículo. La compra normal y el resto de la app siguen funcionando sin conexión. El permiso `INTERNET` sigue sin bloquearse y ahora es necesario para esta función opcional.
 
 ## 13. Riesgos y mitigaciones
 
@@ -492,6 +532,9 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | Texto ampliado o TalkBack rompen el layout. | Medio | 48 dp, sin alturas fijas, checklist manual y RNTL. |
 | Reloj del dispositivo incorrecto. | Bajo | La fecha refleja el dispositivo; no hay servidor. Documentado. |
 | Una tarea de BD se cuelga. | Bajo | Watchdog de 10 s y pantalla de reinicio; no se reutiliza la conexión. |
+| La Sirena cambia o limita su API VTEX. | Medio | Proxy propio aislado en `_catalogCore`; timeout de 4.5 s; errores 502/504 y fallback al formulario manual. |
+| El backend tarda o no responde. | Medio | Timeout de cliente y servidor; la búsqueda se cancela al cambiar de consulta; el marcado nunca espera a la red. |
+| El filtro de familia devuelve falsos positivos. | Bajo | Comparación por palabra completa, plural y acentos; máximo 8 resultados; pruebas con `pan`/`panela`. |
 | Cambio de alcance. | Medio | Gate de MVP; todo lo demás a v1.1. |
 
 ## 14. Decisiones registradas (ADR resumido)
@@ -516,3 +559,7 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | A16 | `allowBackup=false`; export en v1.1. | Aceptada con riesgo |
 | A17 | Sin migración v2 ficticia; guarda de downgrade. | Aceptada |
 | A18 | Deshacer borrado de artículo durante 5 s. | Aceptada |
+| A19 | Catálogo opcional con proxy propio en Vercel; la app no llama a VTEX ni guarda la URL interna. | Aceptada |
+| A20 | Precios y totales en céntimos enteros; subtotal con un solo redondeo y total de catálogo al cerrar. | Aceptada |
+| A21 | Detalle de línea en columnas de `items` con migración 002; sin tabla `item_details`. | Aceptada |
+| A22 | Sugerencias automáticas al abrir el detalle; el buscador solo corrige la consulta (D-52). | Aceptada |

@@ -129,7 +129,7 @@ describe('casos de uso de artículos', () => {
     await ctx.manager.mutate((tx) =>
       tx.run(
         `UPDATE lists
-            SET status = 'completed', completed_at_utc = 1,
+            SET status = 'completed', shopping_mode = 'normal', completed_at_utc = 1,
                 completed_local_date = '2026-10-27',
                 completed_local_time = '18:42', supermarket_name = 'Mercadona'
           WHERE id = ?`,
@@ -163,7 +163,7 @@ describe('casos de uso de artículos', () => {
     await ctx.manager.mutate((tx) =>
       tx.run(
         `UPDATE lists
-            SET status = 'completed', completed_at_utc = 1,
+            SET status = 'completed', shopping_mode = 'normal', completed_at_utc = 1,
                 completed_local_date = '2026-10-27',
                 completed_local_time = '18:42', supermarket_name = 'Mercadona'
           WHERE id = ?`,

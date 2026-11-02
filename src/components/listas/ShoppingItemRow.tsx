@@ -5,33 +5,53 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import type { ShoppingItem } from '@/domain/item';
 import { es } from '@/strings/es';
+import { itemDetailText } from '@/lib/itemDetailText';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 interface ShoppingItemRowProps {
   item: ShoppingItem;
   pending: boolean;
   onToggle(itemId: string): void;
+  /** En modo catálogo la fila abre el detalle en vez de marcar directamente. */
+  catalogMode?: boolean;
+  onOpenDetail?(itemId: string): void;
 }
 
 /**
  * Fila de compra con checkbox de 28 dp dentro de un objetivo táctil de 56 dp.
  *
  * El texto tachado y la etiqueta "Comprado" acompañan al check para que el
- * estado no dependa solo del color; TalkBack lee el mismo estado.
+ * estado no dependa solo del color; TalkBack lee el mismo estado. En modo
+ * catálogo la fila abre el detalle: marcar exige elegir marca y precio, y la
+ * compra normal conserva el toque directo de siempre.
  */
 export const ShoppingItemRow = memo(function ShoppingItemRow({
   item,
   pending,
   onToggle,
+  catalogMode = false,
+  onOpenDetail,
 }: ShoppingItemRowProps) {
+  const opensDetail = catalogMode && onOpenDetail !== undefined;
+  const detail = item.detail;
+  const detailText = itemDetailText(detail);
+
   return (
     <Pressable
-      accessibilityRole="checkbox"
+      accessibilityRole={opensDetail ? 'button' : 'checkbox'}
       accessibilityState={{ checked: item.isChecked, disabled: pending }}
-      accessibilityLabel={es.shopping.itemLabel(item.name, item.isChecked)}
-      accessibilityHint={es.shopping.toggleHint}
+      accessibilityLabel={
+        opensDetail
+          ? es.itemDetail.openLabel(item.name, detail !== null)
+          : es.shopping.itemLabel(item.name, item.isChecked)
+      }
+      accessibilityHint={
+        opensDetail ? es.itemDetail.openHint : es.shopping.toggleHint
+      }
       disabled={pending}
-      onPress={() => onToggle(item.id)}
+      onPress={() =>
+        opensDetail ? onOpenDetail(item.id) : onToggle(item.id)
+      }
       style={({ pressed }) => [
         styles.row,
         pressed && styles.pressed,
@@ -57,12 +77,27 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
         >
           {item.name}
         </AppText>
+        {detailText ? (
+          <AppText variant="caption" style={styles.detail} numberOfLines={1}>
+            {detailText}
+          </AppText>
+        ) : null}
         {item.isChecked ? (
           <AppText variant="caption" style={styles.tag}>
             {es.shopping.checkedTag}
           </AppText>
         ) : null}
       </View>
+
+      {opensDetail ? (
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.textMuted}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+      ) : null}
     </Pressable>
   );
 });
@@ -109,6 +144,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   tag: {
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  detail: {
     color: colors.textSecondary,
     marginTop: 2,
   },

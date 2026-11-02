@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import type { ShoppingItem } from '@/domain/item';
 import { es } from '@/strings/es';
+import { itemDetailText } from '@/lib/itemDetailText';
 import { colors, layout, spacing } from '@/theme/tokens';
 
 interface PurchaseItemRowProps {
@@ -18,11 +19,17 @@ interface PurchaseItemRowProps {
  * estado no dependa solo del color.
  */
 export function PurchaseItemRow({ item }: PurchaseItemRowProps) {
+  const detailText = itemDetailText(item.detail);
+
   return (
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel={es.purchase.itemLabel(item.name, item.isChecked)}
+      accessibilityLabel={
+        detailText
+          ? es.purchase.itemDetailLabel(item.name, item.isChecked, detailText)
+          : es.purchase.itemLabel(item.name, item.isChecked)
+      }
       style={styles.row}
     >
       <Ionicons
@@ -39,6 +46,11 @@ export function PurchaseItemRow({ item }: PurchaseItemRowProps) {
         >
           {item.name}
         </AppText>
+        {detailText ? (
+          <AppText variant="caption" style={styles.detail}>
+            {detailText}
+          </AppText>
+        ) : null}
         {item.isChecked ? (
           <AppText variant="caption" style={styles.tag}>
             {es.shopping.checkedTag}
@@ -69,6 +81,10 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   tag: {
+    color: colors.textSecondary,
+    marginTop: spacing[1],
+  },
+  detail: {
     color: colors.textSecondary,
     marginTop: spacing[1],
   },

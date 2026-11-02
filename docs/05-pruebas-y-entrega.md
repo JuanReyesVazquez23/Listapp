@@ -15,6 +15,7 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
 | Unitarias | Jest | Reglas, validadores, progreso, fechas, transiciones. |
 | Integración | Jest + `node:sqlite` | Esquema, restricciones, cascada, transacciones, migraciones, consultas. |
 | Componentes | Jest + RNTL | Checkbox, progreso, formularios, snackbar, botones, guardas. |
+| Backend | Jest | Normalización de consulta, filtro de familia, precios VTEX y límite de resultados. |
 | E2E | Maestro | Flujo completo y recuperación sobre el APK. |
 | Manual | Dispositivo Android | Accesibilidad, rendimiento, offline, instalación, errores. |
 
@@ -34,6 +35,26 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
 - Orden de artículos por `sort_order`.
 - Reglas de “no borrar el último artículo en compra”.
 - Mensajes de error por código.
+- Dinero en céntimos:
+  - parseo de `1`, `1,5` y `1.234,56`;
+  - rechazo de negativos, más de dos decimales y cantidades fuera de rango;
+  - formato `RD$0.00` y subtotal con un solo redondeo.
+- Cantidades en milésimas:
+  - unidades `unit`, `pound`, `kilogram`, `liter`;
+  - hasta tres decimales y rango válido;
+  - formato sin ceros sobrantes.
+- Detalle de línea:
+  - validación todo o nada;
+  - marca opcional de hasta 60;
+  - precio obligatorio y positivo;
+  - id de catálogo opcional de hasta 40.
+- Total de compra: exacto, parcial, `null` sin precios y `0` válido.
+- Consulta de catálogo: longitud, palabras, stopwords, unidades y caracteres inválidos.
+- Filtro de backend (`api/_catalogCore.ts`):
+  - `commertialOffer`, no `commercialOffer`;
+  - `pan` no devuelve `panela`;
+  - plurales y acentos;
+  - máximo 8, deduplicación y precios inválidos.
 
 ## 3. Pruebas de integración con `node:sqlite`
 
@@ -41,14 +62,16 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 
 ### 3.1 Esquema y restricciones
 
-- Crear la BD v1 desde cero.
+- Crear la BD v2 desde cero.
 - `foreign_keys=1` y `journal_mode=wal` verificados.
 - `CHECK` de estado, longitudes y cierre de lista.
+- `CHECK` de `shopping_mode` y `total_cents` por estado.
+- `CHECK` de detalle de línea todo o nada y subtotal consistente.
 - `CHECK` de `is_checked`/`checked_at`.
 - `sort_order > 0` y único por lista.
 - FK con cascada al borrar lista.
 - Índice único de una sola compra `shopping`.
-- `user_version=1` al terminar.
+- `user_version=2` al terminar.
 
 ### 3.2 Transacciones y recuperación
 
@@ -62,7 +85,7 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - La cola sigue viva después de un error.
 - `boot()` single-flight: dos llamadas concurrentes comparten promesa.
 - Boot fallido y reintento: se cierra la conexión y se repite.
-- `user_version=2`: `SCHEMA_TOO_NEW`, sin borrar datos.
+- `user_version=3`: `SCHEMA_TOO_NEW`, sin borrar datos.
 - `user_version=0` con tablas: `UNKNOWN_SCHEMA`.
 
 ### 3.3 Casos de uso
@@ -97,6 +120,16 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - 300 filas sin problema;
   - detalle con comprados/no comprados.
 - Sugerencias de supermercado: últimas 8, sin duplicados por mayúsculas.
+- Compra con catálogo:
+  - empezar fija `shopping_mode='catalog'`;
+  - marcar con detalle guarda subtotal y total;
+  - editar y quitar datos sin desmarcar;
+  - desmarcar borra el detalle;
+  - cancelar limpia checks, detalle, modo y total;
+  - finalizar guarda `total_cents` exacto, parcial o `NULL`;
+  - rechazar detalle en compra `normal`;
+  - restaurar con `Undo` conserva el detalle.
+- `getItemForDetail` devuelve artículo y lista juntos; si no existe → `NOT_FOUND`.
 
 ### 3.4 Migraciones
 
@@ -104,6 +137,12 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - Fallo inyectado en una migración de prueba: rollback y `user_version` intacto.
 - Fixture de versión superior: bloqueo.
 - Fixture con tablas y versión 0: `UNKNOWN_SCHEMA`.
+- Migración 002 sobre datos v1:
+  - conserva listas y artículos;
+  - asigna `normal` a compras `shopping`/`completed`;
+  - deja `shopping_mode = NULL` en borradores;
+  - deja detalle y total nulos;
+  - verifica conteos y `foreign_key_check` antes de confirmar.
 
 ## 4. Pruebas de componentes (RNTL)
 
@@ -111,7 +150,23 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - rol checkbox;
   - estado `checked`;
   - etiqueta “Leche, comprado/no comprado”;
-  - acción de toque y bloqueo mientras hay una escritura pendiente.
+  - acción de toque y bloqueo mientras hay una escritura pendiente;
+  - en modo `catalog`: rol botón, abre el detalle y no marca;
+  - muestra “Bimbo · 1.5 Libra · RD$3.00”.
+- `ItemDetailForm`:
+  - pinta las marcas ya buscadas sin escribir;
+  - elegir presentación rellena marca, cantidad y precio;
+  - guardar envía el detalle validado;
+  - errores por campo bloquean el envío;
+  - el buscador no consulta mientras se escribe;
+  - “Sin conexión” deja el formulario manual y “Reintentar”.
+- `PurchaseTotalRow`: total exacto, parcial, sin precios y chip “Con La Sirena”.
+- `useItemDetail`:
+  - búsqueda automática única con el nombre del artículo;
+  - no repite al enfocar;
+  - no busca si ya hay detalle;
+  - fallo de red no bloquea;
+  - marcar/actualizar/quitar/omitir llaman al caso de uso correcto.
 - `ProgressBar`: rol progressbar y valor accesible.
 - `AddItemBar`: validación inline y envío del nombre recortado.
 - `TextField`: etiqueta visible, error anunciado, foco.
@@ -128,6 +183,23 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - Historial: agrupación y fila con fecha completa.
 
 RNTL no mide layout nativo. Los objetivos de 48 dp, la escala al 200 % y TalkBack se verifican en el checklist manual.
+
+### 4.1 Pruebas del backend
+
+Las reglas puras de `api/_catalogCore.ts` se prueban con Jest sin levantar Vercel:
+
+- `normalizeQuery`: quita cantidad inicial, stopwords y unidades; rechaza vacío, una letra, más de cinco palabras y caracteres de control.
+- `toCatalogResults`:
+  - lee `seller.commertialOffer.Price`;
+  - ignora `commercialOffer`;
+  - convierte a céntimos con redondeo;
+  - exige que el primer término aparezca como palabra del nombre, marca o categoría;
+  - puntúa los términos restantes y ordena;
+  - deduplica, descarta precios `0`, negativos o absurdos;
+  - corta en `CATALOG_LIMITS.maxResults = 8`;
+  - devuelve `[]` si la respuesta no es un arreglo.
+
+El handler `api/catalog.ts` no se prueba con red real en CI: la verificación del endpoint desplegado es manual (sección 6.5).
 
 ## 5. Pruebas E2E con Maestro
 
@@ -208,11 +280,39 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Cerrar la app a mitad de compra y continuar.
 - [ ] Force-stop durante una escritura: al reabrir, estado `shopping` o `completed`, nunca parcial.
 - [ ] Provocar un error de migración en un build de prueba: rollback, sin pérdida.
-- [ ] Fixture `user_version=2`: pantalla de versión incompatible, sin borrar.
+- [ ] Fixture `user_version=3`: pantalla de versión incompatible, sin borrar.
 - [ ] Deep links a estados incorrectos: redirección segura.
 - [ ] Borrar artículo y deshacer dentro de 5 s.
 - [ ] Finalizar con 0 marcados: confirmación.
 - [ ] Cancelar compra: desmarca y vuelve a borrador.
+
+### 6.5 Catálogo con y sin red
+
+**Endpoint desplegado** (`https://listapp-rose.vercel.app/api/catalog`):
+
+- [ ] `?q=pan` devuelve solo panes: ni `panela`, ni el catálogo completo; máximo 8.
+- [ ] `?q=leche` devuelve leches; `?q=2%20kg%20de%20arroz` normaliza la cantidad.
+- [ ] Sin `q` o con una sola letra → `400 invalid_query`.
+- [ ] `POST` → `405 method_not_allowed`.
+- [ ] Respuesta con `{ query, results }` y `priceCents` entero.
+- [ ] `SIRENA_API_BASE_URL` configurada en Vercel; el APK no contiene esa URL.
+
+**En el dispositivo:**
+
+- [ ] Compra normal: marcar y desmarcar con un toque, sin chip, sin total y sin modal.
+- [ ] Compra normal: el flujo es idéntico al de la versión anterior.
+- [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir.
+- [ ] Elegir una presentación rellena marca, precio y cantidad; se puede ajustar cantidad y unidad.
+- [ ] Guardar deja la fila con marca, cantidad, subtotal y check; el total de la compra se actualiza.
+- [ ] Omitir marca sin precio; el total pasa a parcial o “Aún no hay precios”.
+- [ ] Quitar datos mantiene el artículo marcado y baja el total.
+- [ ] Quitar de la compra desmarca y borra el detalle.
+- [ ] Atrás en el modal pide confirmación; Guardar/Omitir/Quitar cierran sin preguntar.
+- [ ] Cierre muestra chip y total; el detalle histórico y el historial muestran el total guardado.
+- [ ] Modo avión: el detalle explica “Sin conexión” y permite completar a mano.
+- [ ] Servidor caído o lento: aviso y “Reintentar”; el marcado nunca se bloquea.
+- [ ] Volver a abrir un artículo ya valorado no repite la búsqueda ni pisa sus datos.
+- [ ] Cambiar de modo a mitad de compra no es posible; cancelar vuelve a borrador y limpia modo, detalle y total.
 
 ## 7. Node y reproducibilidad
 
@@ -276,18 +376,21 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | `android.buildType` | `apk` |
 | `developmentClient` | `false` |
 | `channel` | No se usa OTA. |
+| `env.EXPO_PUBLIC_CATALOG_API_URL` | `https://listapp-rose.vercel.app/api/catalog`; se incrusta al compilar. |
 
 ### 9.4 Pasos
 
 1. `npx expo-doctor`.
 2. `npx expo install --check`.
-3. `eas login`.
-4. `eas build:configure`.
-5. `eas build -p android --profile preview`.
-6. Descargar el APK.
-7. `adb install -r listapp.apk`.
-8. Smoke test del flujo completo.
-9. Guardar el keystore y las credenciales.
+3. `npx tsc --noEmit`, `npm run lint`, `npm test`.
+4. `eas login`.
+5. `eas build:configure`.
+6. Comprobar `EXPO_PUBLIC_CATALOG_API_URL` en el perfil `preview` de `eas.json`.
+7. `eas build -p android --profile preview`.
+8. Descargar el APK a `C:\Users\jeanx\Downloads\listapp-preview.apk`.
+9. `adb install -r listapp-preview.apk`.
+10. Smoke test del flujo normal y del flujo con La Sirena.
+11. Guardar el keystore y las credenciales.
 
 **Primer build al cerrar M3.** Se compila cuando el flujo principal ya es funcional, para validar cuenta, credenciales, SDK, paquete y entorno sobre una app usable.
 
@@ -310,16 +413,18 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. Verificación local: `npx tsc --noEmit`, `npm run lint`, `npx expo export --platform android` y 25 suites / 156 pruebas en verde. APK `preview` generado el 31/10/2026 (build `c2b17087-ae19-476a-80fa-d2e2db43be39`) y guardado en `C:\Users\jeanx\Downloads\listapp-preview.apk`. Queda pendiente de entrega: instalarlo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual.
+**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel y modal de detalle con búsqueda automática. Verificación local: `npx tsc --noEmit`, `npm run lint` y 34 suites / 245 pruebas en verde. APK anterior `preview` generado el 31/10/2026 (build `c2b17087-ae19-476a-80fa-d2e2db43be39`); el APK con catálogo se compila al cerrar esta entrega. Queda pendiente de entrega: instalarlo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
 
 ## 11. Definición de terminado (MVP)
 
 - Todos los AC-01 a AC-22 verificados o marcados como manuales realizados.
 - `npx tsc --noEmit`, lint y tests en verde.
 - APK `preview` instalado en un dispositivo físico.
-- Flujo completo offline.
+- Flujo completo sin red; el catálogo solo añade una ayuda opcional.
 - Recuperación tras cerrar la app.
-- Historial con fecha, hora y supermercado.
+- Historial con fecha, hora, supermercado y total de catálogo.
+- Compra normal idéntica a la versión anterior.
+- Catálogo con La Sirena: búsqueda automática, máximo 8 resultados y fallback manual.
 - TalkBack y texto al 200 % sin bloqueos.
 - Sin pérdida de datos en rollback, cierre forzado o migración fallida.
 - Documentación de decisiones y riesgos actualizada.
@@ -335,3 +440,5 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | Pérdida de datos al desinstalar. | Aviso; export JSON en v1.1. |
 | Historial sin paginación. | `SectionList`; v1.1 si el volumen lo exige. |
 | Reloj del dispositivo incorrecto. | Documentado; no hay servidor. |
+| La API de La Sirena cambia o bloquea el proxy. | Fallback manual; timeout; verificar el endpoint antes de cada entrega. |
+| El APK se compila sin `EXPO_PUBLIC_CATALOG_API_URL`. | Comprobar `eas.json` antes del build; si falta, el detalle muestra error de catálogo pero sigue permitiendo el marcado manual. |

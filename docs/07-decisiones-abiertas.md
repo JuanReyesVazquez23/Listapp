@@ -97,6 +97,7 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-49 | Logs de la consulta | **Sin logs de aplicación con `q`**; los logs de acceso del CDN pueden conservar la URL. | Se documenta la retención real en lugar de prometer privacidad absoluta. | 02 |
 | D-50 | Copia antes de la migración 002 | **Sin copia automática de archivo**: migración atómica con verificación de conteos y FK. Copia manual antes del primer APK con datos reales. | `VACUUM INTO` no funciona dentro de la transacción y una ruta de archivo añade un fallo nuevo. | 03, 05 |
 | D-51 | Visibilidad del modo | **Chip “Con La Sirena” solo en modo catálogo**; la compra normal conserva su interfaz actual. | Mostrar un chip en normal contradice “idéntica a hoy”. | 01, 04 |
+| D-52 | Sugerencias al marcar | **Automáticas:** al abrir el detalle se busca con el nombre del artículo y se muestran sus marcas y presentaciones sin escribir nada. El campo de búsqueda solo corrige la consulta. | Es el comportamiento inteligente que pidió el usuario; obligarle a teclear convierte la ayuda en trabajo. | 01, 04 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 

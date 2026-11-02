@@ -1,5 +1,6 @@
 import { migration001, type Migration } from '@/infrastructure/migrations/001_initial';
+import { migration002 } from '@/infrastructure/migrations/002_item_details';
 
-export const LATEST_SCHEMA_VERSION = 1;
+export const LATEST_SCHEMA_VERSION = 2;
 
-export const migrations: readonly Migration[] = [migration001];
+export const migrations: readonly Migration[] = [migration001, migration002];

@@ -53,6 +53,14 @@ export default function RootLayout() {
               title: es.finish.title,
             }}
           />
+          <Stack.Screen
+            name="lista/[id]/detalle/[itemId]"
+            options={{
+              presentation: 'modal',
+              gestureEnabled: false,
+              title: es.itemDetail.title,
+            }}
+          />
           <Stack.Screen name="compra/[id]" options={{ title: es.purchase.title }} />
           <Stack.Screen name="+not-found" options={{ title: es.notFound.header }} />
         </Stack>

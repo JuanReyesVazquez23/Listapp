@@ -1,4 +1,4 @@
-import type { ListSummary, ShoppingList } from '@/domain/list';
+import type { ListSummary, ShoppingList, ShoppingMode } from '@/domain/list';
 import {
   LIST_COLUMNS,
   mapListRow,
@@ -20,6 +20,7 @@ export interface FinishShoppingInput {
   localDate: string;
   localTime: string;
   supermarketName: string;
+  totalCents: number | null;
 }
 
 export async function insertList(tx: Tx, input: InsertListInput): Promise<ShoppingList> {
@@ -62,10 +63,14 @@ export async function findListSummaries(reader: SqlReader): Promise<ListSummary[
   const rows = await reader.all<ListSummaryRow>(
     `SELECT l.id, l.name, l.status, l.created_at_utc, l.updated_at_utc,
             l.completed_at_utc, l.completed_local_date, l.completed_local_time,
-            l.supermarket_name,
+            l.supermarket_name, l.shopping_mode, l.total_cents,
             (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id) AS item_count,
             (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id AND i.is_checked = 1)
-              AS checked_count
+              AS checked_count,
+            CASE WHEN l.shopping_mode = 'catalog' THEN (
+              SELECT COUNT(*) FROM items i
+               WHERE i.list_id = l.id AND i.is_checked = 1 AND i.quantity_milli IS NULL
+            ) ELSE 0 END AS unpriced_checked_count
        FROM lists l
       WHERE l.status IN ('draft', 'shopping')
       ORDER BY CASE l.status WHEN 'shopping' THEN 0 ELSE 1 END,
@@ -93,13 +98,14 @@ export async function findActiveShoppingId(reader: SqlReader): Promise<string | 
 export async function startShoppingRow(
   tx: Tx,
   id: string,
+  mode: ShoppingMode,
   nowUtc: number,
 ): Promise<number> {
   const result = await tx.run(
     `UPDATE lists
-        SET status = 'shopping', updated_at_utc = ?
+        SET status = 'shopping', shopping_mode = ?, updated_at_utc = ?
       WHERE id = ? AND status = 'draft'`,
-    [nowUtc, id],
+    [mode, nowUtc, id],
   );
   return result.changes;
 }
@@ -115,7 +121,10 @@ export async function cancelShoppingRow(
 ): Promise<number> {
   const result = await tx.run(
     `UPDATE lists
-        SET status = 'draft', updated_at_utc = ?
+        SET status = 'draft',
+            shopping_mode = NULL,
+            total_cents = NULL,
+            updated_at_utc = ?
       WHERE id = ? AND status = 'shopping'`,
     [nowUtc, id],
   );
@@ -157,7 +166,8 @@ export async function finishShoppingRow(
             completed_at_utc = ?,
             completed_local_date = ?,
             completed_local_time = ?,
-            supermarket_name = ?
+            supermarket_name = ?,
+            total_cents = ?
       WHERE id = ? AND status = 'shopping'`,
     [
       input.nowUtc,
@@ -165,6 +175,7 @@ export async function finishShoppingRow(
       input.localDate,
       input.localTime,
       input.supermarketName,
+      input.totalCents,
       input.id,
     ],
   );
@@ -178,10 +189,14 @@ export async function findCompletedPurchaseSummaries(
   const rows = await reader.all<ListSummaryRow>(
     `SELECT l.id, l.name, l.status, l.created_at_utc, l.updated_at_utc,
             l.completed_at_utc, l.completed_local_date, l.completed_local_time,
-            l.supermarket_name,
+            l.supermarket_name, l.shopping_mode, l.total_cents,
             (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id) AS item_count,
             (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id AND i.is_checked = 1)
-              AS checked_count
+              AS checked_count,
+            CASE WHEN l.shopping_mode = 'catalog' THEN (
+              SELECT COUNT(*) FROM items i
+               WHERE i.list_id = l.id AND i.is_checked = 1 AND i.quantity_milli IS NULL
+            ) ELSE 0 END AS unpriced_checked_count
        FROM lists l
       WHERE l.status = 'completed'
       ORDER BY l.completed_at_utc DESC`,

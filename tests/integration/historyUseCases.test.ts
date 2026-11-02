@@ -25,7 +25,7 @@ describe('casos de uso del historial', () => {
     const list = await createList(ctx.deps, { name: `Compra ${supermarketName}` });
     const milk = await addItem(ctx.deps, list.id, 'Leche');
     await addItem(ctx.deps, list.id, 'Pan');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, milk.id, true);
     await finishPurchase(ctx.deps, {
       listId: list.id,
@@ -115,7 +115,7 @@ describe('casos de uso del historial', () => {
   it('rechaza borrar una compra activa con INVALID_STATE sin tocar datos', async () => {
     const list = await createList(ctx.deps, { name: 'En compra' });
     await addItem(ctx.deps, list.id, 'Leche');
-    await startShopping(ctx.deps, list.id);
+    await startShopping(ctx.deps, list.id, 'normal');
 
     await expect(deletePurchase(ctx.deps, list.id)).rejects.toMatchObject({
       code: 'INVALID_STATE',

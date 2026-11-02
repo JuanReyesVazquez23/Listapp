@@ -34,6 +34,9 @@ export async function createTestContext(
       idCounter += 1;
       return `id-${idCounter}`;
     },
+    catalog: {
+      search: async () => ({ ok: true, products: [] }),
+    },
   };
 
   return {

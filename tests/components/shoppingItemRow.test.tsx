@@ -62,4 +62,55 @@ describe('ShoppingItemRow', () => {
     await fireEvent.press(row);
     expect(onToggle).not.toHaveBeenCalled();
   });
+
+  it('en modo catálogo abre el detalle en vez de marcar', async () => {
+    const onToggle = jest.fn();
+    const onOpenDetail = jest.fn();
+    await render(
+      <ShoppingItemRow
+        item={milk}
+        pending={false}
+        onToggle={onToggle}
+        catalogMode
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+
+    const row = screen.getByLabelText('Abre el detalle de Leche, sin precio');
+    expect(row.props.accessibilityRole).toBe('button');
+    expect(row.props.accessibilityHint).toBe('Toca para elegir marca, cantidad y precio');
+
+    await fireEvent.press(row);
+    expect(onOpenDetail).toHaveBeenCalledWith('item-1');
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('en modo catálogo muestra la línea con marca, cantidad y subtotal', async () => {
+    const withDetail = {
+      ...milk,
+      isChecked: true,
+      checkedAtUtc: 10,
+      detail: {
+        brand: 'Bimbo',
+        quantityMilli: 1500,
+        unit: 'pound' as const,
+        unitPriceCents: 200,
+        lineSubtotalCents: 300,
+        catalogProductId: '1',
+      },
+    };
+
+    await render(
+      <ShoppingItemRow
+        item={withDetail}
+        pending={false}
+        onToggle={jest.fn()}
+        catalogMode
+        onOpenDetail={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Bimbo · 1.5 Libra · RD$3.00')).toBeTruthy();
+    expect(screen.getByText('Comprado')).toBeTruthy();
+  });
 });

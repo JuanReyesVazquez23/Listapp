@@ -15,6 +15,7 @@ import { FinishPurchaseForm } from '@/components/compras/FinishPurchaseForm';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { finishGuard } from '@/domain/navigation';
+import { computePurchaseTotal } from '@/domain/purchase';
 import { useFinishPurchase } from '@/features/listas/hooks/useFinishPurchase';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { es } from '@/strings/es';
@@ -122,6 +123,8 @@ export default function FinishPurchaseScreen() {
   }
 
   const checkedCount = detail.items.filter((item) => item.isChecked).length;
+  const catalogMode = detail.list.shoppingMode === 'catalog';
+  const total = computePurchaseTotal(detail.items);
 
   return (
     <Screen>
@@ -150,6 +153,9 @@ export default function FinishPurchaseScreen() {
             isSubmitting={finishing}
             saveError={error}
             onSubmit={handleSubmit}
+            catalogMode={catalogMode}
+            totalCents={total.totalCents}
+            unpricedCount={total.unpricedCount}
           />
         </ScrollView>
       </KeyboardAvoidingView>
