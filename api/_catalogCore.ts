@@ -138,10 +138,17 @@ function isSignificantTerm(term: string): boolean {
  * Reduce la respuesta de VTEX a la familia de la consulta.
  *
  * VTEX busca en todo el catálogo y su `ft` puede devolver productos de otra
- * familia. Por eso se exige que el primer término significativo aparezca como
- * palabra del nombre, la marca o las categorías; los demás términos solo
- * ordenan. Se elige la primera presentación con precio positivo y se corta en
- * `maxResults`, así el usuario nunca recibe el catálogo completo.
+ * familia: `leche` trae chocolates con leche y `pan` trae panela. Por eso el
+ * primer término significativo manda en dos niveles:
+ *
+ * 1. Si alguna categoría del resultado contiene ese término, solo se aceptan
+ *    productos de esa categoría. Es la señal más fiable de familia.
+ * 2. Si ninguna categoría lo contiene, se acepta el término como palabra del
+ *    nombre o la marca, con plural y acentos.
+ *
+ * Los demás términos solo ordenan. Se elige la primera presentación con precio
+ * positivo y se corta en `maxResults`, así el usuario nunca recibe el catálogo
+ * completo.
  */
 export function toCatalogResults(
   data: unknown,
@@ -153,7 +160,11 @@ export function toCatalogResults(
 
   const primary = terms[0];
   const seen = new Set<string>();
-  const scored: Array<{ result: CatalogResult; score: number }> = [];
+  const candidates: Array<{
+    result: CatalogResult;
+    categoryMatch: boolean;
+    haystack: string;
+  }> = [];
 
   for (const raw of data) {
     const product = asRecord(raw);
@@ -168,12 +179,12 @@ export function toCatalogResults(
     }
 
     const brand = readText(product.brand, 80);
-    const categories = readCategoryNames(product);
-    const haystack = normalizeForMatch(
-      `${name} ${brand ?? ''} ${categories}`,
-    );
+    const categoryHaystack = normalizeForMatch(readCategoryNames(product));
+    const nameHaystack = normalizeForMatch(`${name} ${brand ?? ''}`);
+    const categoryMatch = matchesTerm(categoryHaystack, primary);
+    const nameMatch = matchesTerm(nameHaystack, primary);
 
-    if (!matchesTerm(haystack, primary)) {
+    if (!categoryMatch && !nameMatch) {
       continue;
     }
     if (seen.has(productId)) {
@@ -186,8 +197,7 @@ export function toCatalogResults(
     }
 
     seen.add(productId);
-    const score = scoreMatch(haystack, terms);
-    scored.push({
+    candidates.push({
       result: {
         productId,
         name,
@@ -195,9 +205,20 @@ export function toCatalogResults(
         presentation: readPresentation(offer.itemName, name, brand),
         priceCents: offer.priceCents,
       },
-      score,
+      categoryMatch,
+      haystack: `${nameHaystack} ${categoryHaystack}`,
     });
   }
+
+  // Solo se restringe a categoría si la propia respuesta demuestra que existe
+  // una categoría de la familia; si ninguna la nombra, el nombre sigue valiendo.
+  const familyHasCategory = candidates.some((entry) => entry.categoryMatch);
+  const scored = candidates
+    .filter((entry) => !familyHasCategory || entry.categoryMatch)
+    .map((entry) => ({
+      result: entry.result,
+      score: scoreMatch(entry.haystack, terms) + (entry.categoryMatch ? 1 : 0),
+    }));
 
   scored.sort((left, right) => {
     if (right.score !== left.score) {

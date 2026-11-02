@@ -132,6 +132,34 @@ describe('toCatalogResults', () => {
     expect(milk).toHaveLength(1);
   });
 
+  it('prioriza la categoría de la familia y descarta otros usos del término', () => {
+    const results = toCatalogResults(
+      [
+        product('1', 'Chocolate Con Leche', {
+          categories: ['/Supermercado/Galletas y Dulces/Chocolates/'],
+        }),
+        product('2', 'Leche Entera', {
+          categories: ['/Supermercado/Lácteos y Huevos/Leche Líquida/'],
+        }),
+        product('3', 'Pan De Leche', {
+          categories: ['/Supermercado/Panadería y Repostería/Pan del día/'],
+        }),
+      ],
+      ['leche'],
+    );
+
+    expect(results.map((entry) => entry.productId)).toEqual(['2']);
+  });
+
+  it('vuelve al nombre si ninguna categoría nombra la familia', () => {
+    const results = toCatalogResults(
+      [product('1', 'Leche Entera', { categories: ['/Supermercado/'] })],
+      ['leche'],
+    );
+
+    expect(results.map((entry) => entry.productId)).toEqual(['1']);
+  });
+
   it('ordena por coincidencia de términos sin salir de la familia', () => {
     const results = toCatalogResults(
       [
