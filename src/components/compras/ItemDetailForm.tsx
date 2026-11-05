@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -210,6 +211,22 @@ export function ItemDetailForm({
                     pressed && styles.pressed,
                   ]}
                 >
+                  <View style={styles.productImageFrame}>
+                    {product.imageUrl ? (
+                      <Image
+                        source={{ uri: product.imageUrl }}
+                        style={styles.productImage}
+                        resizeMode="contain"
+                        accessible={false}
+                        testID="catalog-product-image"
+                      />
+                    ) : (
+                      <View
+                        style={styles.productImagePlaceholder}
+                        testID="catalog-product-image-placeholder"
+                      />
+                    )}
+                  </View>
                   <View style={styles.productText}>
                     <AppText variant="bodyStrong" numberOfLines={2}>
                       {product.brand ?? product.name}
@@ -502,6 +519,21 @@ const styles = StyleSheet.create({
   productSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primarySoft,
+  },
+  productImageFrame: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bgSubtle,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productImagePlaceholder: {
+    flex: 1,
+    backgroundColor: colors.bgSubtle,
   },
   productText: {
     flex: 1,

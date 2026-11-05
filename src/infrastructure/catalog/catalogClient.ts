@@ -1,12 +1,13 @@
 import {
-  CATALOG_LIMITS,
   type CatalogClient,
   type CatalogProduct,
   type CatalogSearchOutcome,
 } from '@/domain/catalog';
 import { CATALOG_API_URL } from '@/lib/config';
 
-export const CATALOG_TIMEOUT_MS = 4500;
+// La respuesta puede traer varias páginas de VTEX. 15 s deja margen al backend
+// y sigue evitando que el formulario quede en carga indefinida.
+export const CATALOG_TIMEOUT_MS = 15000;
 
 type CatalogFailure = Extract<CatalogSearchOutcome, { ok: false }>['reason'];
 
@@ -15,7 +16,7 @@ type CatalogFailure = Extract<CatalogSearchOutcome, { ok: false }>['reason'];
  *
  * El backend devuelve resultados ya normalizados; aquí solo se valida la
  * forma y se traduce el fallo a un motivo que la UI pueda explicar. Cada
- * llamada tiene su propio `AbortController` y se cancela a los 4500 ms o cuando
+ * llamada tiene su propio `AbortController` y se cancela a los 15 s o cuando
  * la búsqueda anterior deja de interesar.
  */
 export class HttpCatalogClient implements CatalogClient {
@@ -80,7 +81,7 @@ export class HttpCatalogClient implements CatalogClient {
 
 function buildUrl(baseUrl: string, query: string): string {
   const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}q=${encodeURIComponent(query)}&limit=${CATALOG_LIMITS.maxResults}`;
+  return `${baseUrl}${separator}q=${encodeURIComponent(query)}`;
 }
 
 function mapStatus(status: number): CatalogFailure {
@@ -114,6 +115,7 @@ function parseCatalogResponse(data: unknown): CatalogProduct[] | null {
     const name = readString(raw.name, 1, 200);
     const brand = readNullableString(raw.brand, 80);
     const presentation = readNullableString(raw.presentation, 80);
+    const imageUrl = readImageUrl(raw.imageUrl);
     const priceCents = raw.priceCents;
 
     if (
@@ -129,13 +131,27 @@ function parseCatalogResponse(data: unknown): CatalogProduct[] | null {
       continue;
     }
 
-    products.push({ productId, name, brand, presentation, priceCents });
-    if (products.length === CATALOG_LIMITS.maxResults) {
-      break;
-    }
+    products.push({ productId, name, brand, presentation, priceCents, imageUrl });
   }
 
   return products;
+}
+
+/**
+ * Acepta solo imágenes HTTPS. Una URL rota o de otro esquema se convierte en
+ * `null`: el producto sigue siendo válido y la fila muestra el placeholder.
+ */
+function readImageUrl(value: unknown): string | null {
+  const candidate = readNullableString(value, 500);
+  if (candidate === null || candidate === undefined) {
+    return null;
+  }
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

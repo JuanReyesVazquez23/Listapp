@@ -1,5 +1,7 @@
 {
-  "version": 2,
-  "builds": [{ "src": "api/catalog.ts", "use": "@vercel/node" }],
-  "routes": [{ "src": "/api/catalog", "dest": "/api/catalog.ts" }]
+  "functions": {
+    "api/catalog.ts": {
+      "maxDuration": 60
+    }
+  }
 }

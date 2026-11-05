@@ -83,7 +83,7 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-35 | Cuándo se elige el modo | **Al iniciar la compra**, con un selector explícito; no se cambia a mitad. | Se guarda en la lista y se muestra en la cabecera. | 01, 04 |
 | D-36 | ¿El detalle es obligatorio? | **No.** “Omitir” marca el artículo sin datos y el total se marca como parcial. | Nunca se bloquea el marcado por falta de precio o de red. | 01, 04 |
 | D-37 | Dinero y cantidades | **Céntimos enteros y milésimas enteras**; un único redondeo por línea; moneda fija `DOP`. | Evita `REAL`, deriva y totales que no cuadran. | 03 |
-| D-38 | Backend de catálogo | **Node.js en Vercel**, con búsqueda por el nombre del artículo y máximo 8 resultados. | El APK apunta a una URL HTTPS configurable; el backend no guarda datos del usuario. | 02, 05 |
+| D-38 | Backend de catálogo | **Node.js en Vercel**, con búsqueda por el nombre del artículo y todas las presentaciones de la familia, sin límite artificial. | El APK apunta a una URL HTTPS configurable; el backend no guarda datos del usuario. | 02, 05 |
 | D-39 | Fuente de precios | **Endpoint público VTEX de `sirena.do`**, normalizado por el backend y con timeout y caché corta. | Si el endpoint cambia, se corrige solo el backend; la app sigue funcionando en manual. | 02, 05 |
 | D-40 | Total en el historial | **Se guarda el subtotal de cada línea y el total de la compra al finalizar.** | El detalle histórico muestra precio, cantidad y total sin recalcular. | 03, 04 |
 | D-41 | Precio del catálogo | **Por paquete/SKU.** Al elegir un resultado se propone cantidad 1 y unidad `unit`. | Evita interpretar «Azúcar Wala 5 Lb · RD$175» como 5 lb × RD$175. | 03, 04 |
@@ -92,12 +92,13 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-44 | Total sin precios | **`total_cents = NULL` si no hay ninguna línea marcada con precio.** | No mostrar un total falso; `0` sí es un total real y se muestra `RD$0.00`. | 03, 04 |
 | D-45 | Caché del catálogo | **Sin caché en el cliente**; solo caché HTTP del CDN del backend. | La app no guarda precios ni respuestas: cada apertura consulta o cae a manual. | 02, 04 |
 | D-46 | Formato de dinero | **Visual `RD$1,234.56`; editable `1234.56`.** | El parser no acepta separador de miles; la ida y vuelta se hace con el valor editable. | 03, 04 |
-| D-47 | Timeout del catálogo en el móvil | **4500 ms con `AbortController`**, aborto al desmontar o al repetir la búsqueda. | Sin red, el formulario no queda en carga indefinida. | 02, 04 |
-| D-48 | Paginación y caché del backend | **Hasta 2 páginas de 50**; vacío cacheado 60 s; errores sin caché. | Reduce el riesgo de ocultar coincidencias sin disparar peticiones. | 02, 05 |
+| D-47 | Timeout del catálogo en el móvil | **15 s con `AbortController`**, aborto al desmontar o al repetir la búsqueda. | El backend pagina varias veces; el formulario sigue sin quedar en carga indefinida. | 02, 04 |
+| D-48 | Paginación y caché del backend | **Todas las páginas anunciadas por VTEX**, de 50 en 50 y hasta un tope de seguridad de 2000 productos crudos; deadline de 12 s; respuesta pública cacheada 300 s; errores sin caché. | Muestra la familia completa sin disparar peticiones sin fin. | 02, 05 |
 | D-49 | Logs de la consulta | **Sin logs de aplicación con `q`**; los logs de acceso del CDN pueden conservar la URL. | Se documenta la retención real en lugar de prometer privacidad absoluta. | 02 |
 | D-50 | Copia antes de la migración 002 | **Sin copia automática de archivo**: migración atómica con verificación de conteos y FK. Copia manual antes del primer APK con datos reales. | `VACUUM INTO` no funciona dentro de la transacción y una ruta de archivo añade un fallo nuevo. | 03, 05 |
 | D-51 | Visibilidad del modo | **Chip “Con La Sirena” solo en modo catálogo**; la compra normal conserva su interfaz actual. | Mostrar un chip en normal contradice “idéntica a hoy”. | 01, 04 |
 | D-52 | Sugerencias al marcar | **Automáticas:** al abrir el detalle se busca con el nombre del artículo y se muestran sus marcas y presentaciones sin escribir nada. El campo de búsqueda solo corrige la consulta. | Es el comportamiento inteligente que pidió el usuario; obligarle a teclear convierte la ayuda en trabajo. | 01, 04 |
+| D-53 | Consulta e imágenes del catálogo | **La consulta descarta cantidades y números sueltos y pluraliza el sustantivo** (`1 sardina` → `sardinas`); cada resultado incluye la `imageUrl` de La Sirena y un placeholder si falta. | VTEX devuelve cero con `1 sardina` y el usuario pidió reconocer cada presentación por su imagen. | 01, 02, 04 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 
@@ -151,7 +152,8 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-35 | 31 oct 2026 | Modo elegido al iniciar la compra; fijo durante la compra | Usuario |
 | D-36 | 31 oct 2026 | Detalle opcional; “Omitir” no bloquea y el total se marca parcial | Orquestador, derivado de D-36 y del requisito de no bloquear |
 | D-37 | 31 oct 2026 | Céntimos y milésimas enteras; moneda DOP | Orquestador, regla de dinero de la skill |
-| D-38 | 31 oct 2026 | Backend Node.js en Vercel; búsqueda acotada a 8 resultados | Usuario (Vercel) |
+| D-38 | 31 oct 2026 | Backend Node.js en Vercel; búsqueda por nombre y sin límite artificial de resultados | Usuario (Vercel) |
+| D-53 | 5 nov 2026 | Limpiar cantidades, pluralizar el sustantivo y devolver la imagen de cada presentación | Usuario |
 | D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
 | D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |

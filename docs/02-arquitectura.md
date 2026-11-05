@@ -105,7 +105,7 @@ flowchart TD
 | `src/features/*/hooks` | Estado de pantalla, carga al enfocar, llamada a casos de uso. | SQL directo. |
 | `src/useCases` | Validación, coordinación, transacciones, captura de hora, errores tipados. | JSX, navegación, estilos. |
 | `src/useCases/catalog.ts` | Valida la consulta y traduce el resultado del cliente a un `CatalogSearchOutcome`. | `fetch` directo, JSX. |
-| `api/` | Backend Vercel: valida `q`, consulta VTEX, filtra la familia y devuelve máx. 8 resultados. | Datos del usuario, JSX, SQL. |
+| `api/` | Backend Vercel: valida `q`, pagina VTEX, filtra la familia y devuelve todas las presentaciones con su imagen. | Datos del usuario, JSX, SQL. |
 | `src/domain` | Tipos, estados, reglas puras, validadores, progreso, formato de fechas y de dinero. | Efectos secundarios, React, SQL, red. |
 | `src/infrastructure` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas y cliente del catálogo. | Reglas de UI. |
 | `src/lib` | `Clock`, generador de IDs, errores, hápticos, instrumentación. | Lógica de negocio. |
@@ -282,7 +282,7 @@ El catálogo es **opcional y de solo lectura**; nunca participa en una transacci
 1. Al pulsar “Empezar compra”, la lista elige `normal` o `catalog`. El modo se guarda con el estado `shopping` y no cambia hasta cerrar o cancelar (D-35).
 2. En modo `catalog`, al abrir el detalle de un artículo, `useItemDetail` carga el ítem y su lista, y lanza **una** búsqueda automática con el nombre del artículo (D-52). El campo de búsqueda solo corrige la consulta.
 3. `searchCatalog` valida la consulta y llama a `catalogClient.search`, que hace `GET {EXPO_PUBLIC_CATALOG_API_URL}?q=…` con `AbortController`. Cada búsqueda cancela la anterior.
-4. El backend `api/catalog.ts` valida `q`, consulta VTEX con un timeout de 4.5 s, filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con un máximo de 8 productos.
+4. El backend `api/catalog.ts` valida `q`, pagina VTEX de 50 en 50 hasta agotar los resultados (tope de seguridad de 2000 productos crudos), filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con todas las presentaciones y su `imageUrl`.
 5. Elegir una presentación rellena marca, precio y cantidad 1 en el formulario. Guardar ejecuta `checkItem` con el detalle; si la línea ya estaba marcada, `updateItemDetail`.
 6. El total se calcula en el dominio con `computePurchaseTotal`: `null` si ninguna línea marcada tiene precio, parcial si faltan algunas, exacto si todas lo tienen. Se guarda en `lists.total_cents` al finalizar.
 7. Cualquier fallo de red, timeout o respuesta inválida deja el formulario manual disponible: la app **nunca** bloquea el marcado por el catálogo.
@@ -532,9 +532,9 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | Texto ampliado o TalkBack rompen el layout. | Medio | 48 dp, sin alturas fijas, checklist manual y RNTL. |
 | Reloj del dispositivo incorrecto. | Bajo | La fecha refleja el dispositivo; no hay servidor. Documentado. |
 | Una tarea de BD se cuelga. | Bajo | Watchdog de 10 s y pantalla de reinicio; no se reutiliza la conexión. |
-| La Sirena cambia o limita su API VTEX. | Medio | Proxy propio aislado en `_catalogCore`; timeout de 4.5 s; errores 502/504 y fallback al formulario manual. |
+| La Sirena cambia o limita su API VTEX. | Medio | Proxy propio aislado en `_catalogCore`; timeout de 6 s por página, deadline de 12 s; errores 502/504 y fallback al formulario manual. |
 | El backend tarda o no responde. | Medio | Timeout de cliente y servidor; la búsqueda se cancela al cambiar de consulta; el marcado nunca espera a la red. |
-| El filtro de familia devuelve falsos positivos. | Bajo | Comparación por palabra completa, plural y acentos; máximo 8 resultados; pruebas con `pan`/`panela`. |
+| El filtro de familia devuelve falsos positivos. | Bajo | Comparación por palabra completa, plural y acentos; sin corte artificial y con tope de seguridad de 2000 productos crudos; pruebas con `pan`/`panela`. |
 | Cambio de alcance. | Medio | Gate de MVP; todo lo demás a v1.1. |
 
 ## 14. Decisiones registradas (ADR resumido)

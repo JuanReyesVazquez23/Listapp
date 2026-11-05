@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "com.jeanx.listapp",
-      "versionCode": 2,
+      "versionCode": 3,
       "allowBackup": false,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {

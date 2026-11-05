@@ -15,7 +15,7 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
 | Unitarias | Jest | Reglas, validadores, progreso, fechas, transiciones. |
 | Integración | Jest + `node:sqlite` | Esquema, restricciones, cascada, transacciones, migraciones, consultas. |
 | Componentes | Jest + RNTL | Checkbox, progreso, formularios, snackbar, botones, guardas. |
-| Backend | Jest | Normalización de consulta, filtro de familia, precios VTEX y límite de resultados. |
+| Backend | Jest | Normalización de consulta, filtro de familia, precios VTEX, imágenes y ausencia de corte artificial. |
 | E2E | Maestro | Flujo completo y recuperación sobre el APK. |
 | Manual | Dispositivo Android | Accesibilidad, rendimiento, offline, instalación, errores. |
 
@@ -49,12 +49,16 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
   - precio obligatorio y positivo;
   - id de catálogo opcional de hasta 40.
 - Total de compra: exacto, parcial, `null` sin precios y `0` válido.
-- Consulta de catálogo: longitud, palabras, stopwords, unidades y caracteres inválidos.
+- Consulta de catálogo: longitud, palabras, stopwords, unidades, cantidades y caracteres inválidos.
 - Filtro de backend (`api/_catalogCore.ts`):
   - `commertialOffer`, no `commercialOffer`;
   - `pan` no devuelve `panela`;
-  - plurales y acentos;
-  - máximo 8, deduplicación y precios inválidos.
+  - plurales y acentos en ambos sentidos (`sardina`/`sardinas`);
+  - `1 sardina` se normaliza a `sardinas` y `2 kg de arroz` a `arroz`;
+  - todas las presentaciones de la familia, sin corte artificial;
+  - `imageUrl` HTTPS y `null` si falta o no es válida;
+  - deduplicación y precios inválidos.
+- Cliente del catálogo: conserva todos los resultados, envía la consulta sin límite y descarta imágenes que no sean HTTPS.
 
 ## 3. Pruebas de integración con `node:sqlite`
 
@@ -188,7 +192,8 @@ RNTL no mide layout nativo. Los objetivos de 48 dp, la escala al 200 % y TalkBac
 
 Las reglas puras de `api/_catalogCore.ts` se prueban con Jest sin levantar Vercel:
 
-- `normalizeQuery`: quita cantidad inicial, stopwords y unidades; rechaza vacío, una letra, más de cinco palabras y caracteres de control.
+- `normalizeQuery`: quita cantidades, números sueltos, stopwords y unidades; pluraliza el sustantivo que sigue a un conteo; rechaza vacío, una letra, más de cinco palabras y caracteres de control.
+- `readTotalFromResources`: lee el total de `resources: 0-49/297` y devuelve `null` si la cabecera falta o está rota.
 - `toCatalogResults`:
   - lee `seller.commertialOffer.Price`;
   - ignora `commercialOffer`;
@@ -196,7 +201,8 @@ Las reglas puras de `api/_catalogCore.ts` se prueban con Jest sin levantar Verce
   - exige que el primer término aparezca como palabra del nombre, marca o categoría;
   - puntúa los términos restantes y ordena;
   - deduplica, descarta precios `0`, negativos o absurdos;
-  - corta en `CATALOG_LIMITS.maxResults = 8`;
+  - devuelve **todas** las presentaciones de la familia, sin corte;
+  - extrae `items[0].images[0].imageUrl` solo si es HTTPS;
   - devuelve `[]` si la respuesta no es un arreglo.
 
 El handler `api/catalog.ts` no se prueba con red real en CI: la verificación del endpoint desplegado es manual (sección 6.5).
@@ -290,18 +296,23 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 
 **Endpoint desplegado** (`https://listapp-rose.vercel.app/api/catalog`):
 
-- [ ] `?q=pan` devuelve solo panes: ni `panela`, ni el catálogo completo; máximo 8.
+- [ ] `?q=pan` devuelve solo panes: ni `panela`, ni el catálogo completo; aparecen todos los panes de la familia, no solo 8.
 - [ ] `?q=leche` devuelve leches; `?q=2%20kg%20de%20arroz` normaliza la cantidad.
+- [ ] `?q=1%20sardina` devuelve sardinas (la consulta se normaliza a `sardinas`), no cero.
+- [ ] `?q=queso` devuelve las 297 presentaciones de la familia repartidas en todas las páginas de VTEX.
+- [ ] Cada resultado trae `imageUrl` HTTPS de La Sirena; si falta, la app muestra el placeholder.
 - [ ] Sin `q` o con una sola letra → `400 invalid_query`.
 - [ ] `POST` → `405 method_not_allowed`.
-- [ ] Respuesta con `{ query, results }` y `priceCents` entero.
+- [ ] Respuesta con `{ query, results }`, `priceCents` entero e `imageUrl`.
 - [ ] `SIRENA_API_BASE_URL` configurada en Vercel; el APK no contiene esa URL.
 
 **En el dispositivo:**
 
 - [ ] Compra normal: marcar y desmarcar con un toque, sin chip, sin total y sin modal.
 - [ ] Compra normal: el flujo es idéntico al de la versión anterior.
-- [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir.
+- [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir, y cada una muestra su imagen.
+- [ ] Un artículo llamado “1 sardina” busca “sardinas” y muestra varias presentaciones, no cero.
+- [ ] “Queso” muestra todas las presentaciones de la familia, sin quedarse en 8.
 - [ ] Elegir una presentación rellena marca, precio y cantidad; se puede ajustar cantidad y unidad.
 - [ ] Guardar deja la fila con marca, cantidad, subtotal y check; el total de la compra se actualiza.
 - [ ] Omitir marca sin precio; el total pasa a parcial o “Aún no hay precios”.
@@ -424,7 +435,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 - Recuperación tras cerrar la app.
 - Historial con fecha, hora, supermercado y total de catálogo.
 - Compra normal idéntica a la versión anterior.
-- Catálogo con La Sirena: búsqueda automática, máximo 8 resultados y fallback manual.
+- Catálogo con La Sirena: búsqueda automática, todas las presentaciones de la familia con imagen y fallback manual.
 - TalkBack y texto al 200 % sin bloqueos.
 - Sin pérdida de datos en rollback, cierre forzado o migración fallida.
 - Documentación de decisiones y riesgos actualizada.

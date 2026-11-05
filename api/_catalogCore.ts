@@ -8,7 +8,6 @@
  */
 
 export const CATALOG_LIMITS = {
-  maxResults: 8,
   minQueryLength: 2,
   maxQueryLength: 40,
   maxWords: 5,
@@ -32,6 +31,24 @@ export interface CatalogResult {
   brand: string | null;
   presentation: string | null;
   priceCents: number;
+  imageUrl: string | null;
+}
+
+/**
+ * Lee el total anunciado por VTEX en la cabecera `resources`
+ * (`0-49/297`). Sirve para pedir el resto de páginas en paralelo; si la
+ * cabecera falta o está rota, el handler cae a paginar de forma secuencial.
+ */
+export function readTotalFromResources(header: string | null): number | null {
+  if (header === null) {
+    return null;
+  }
+  const match = /\/(\d+)\s*$/.exec(header);
+  if (match === null) {
+    return null;
+  }
+  const total = Number(match[1]);
+  return Number.isInteger(total) && total >= 0 ? total : null;
 }
 
 const STOPWORDS = new Set([
@@ -79,10 +96,10 @@ const UNIT_WORDS = new Set([
   'onzas',
 ]);
 
+const QUANTITY_CONNECTORS = new Set(['de', 'del']);
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const UNSAFE_CHARACTERS = /[^\p{L}\p{N} .-]+/gu;
-const LEADING_QUANTITY =
-  /^\d+(?:[.,]\d+)?\s*(?:kilogramos?|kgs?|libras?|lbs?|litros?|lts?|unidad(?:es)?|unds?|uds?|onzas?|oz|kg|lb|lt|l|u)\b\s*(?:de\s+|del\s+)?/u;
+const NUMBER_TOKEN = /^\d+(?:[.,]\d+)?$/;
 
 /**
  * Normaliza la consulta y extrae los términos que identifican la familia.
@@ -90,7 +107,8 @@ const LEADING_QUANTITY =
  * El cliente ya envía el texto limpio, pero el backend no confía en él: un
  * tercero puede llamar al endpoint directamente. Se aplican los mismos
  * límites y se devuelven los términos significativos, que son los que filtran
- * la respuesta de VTEX.
+ * la respuesta de VTEX. Las cantidades se descartan y el sustantivo que sigue
+ * a un conteo se pluraliza (`1 sardina` → `sardinas`).
  */
 export function normalizeQuery(raw: string): NormalizedQuery {
   const composed =
@@ -101,11 +119,19 @@ export function normalizeQuery(raw: string): NormalizedQuery {
     return { ok: false, reason: 'invalid_chars' };
   }
 
-  const query = lowered
-    .replace(LEADING_QUANTITY, '')
+  const cleaned = lowered
     .replace(UNSAFE_CHARACTERS, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  const query = removeQuantities(cleaned);
+
+  if (query.length === 0) {
+    return {
+      ok: false,
+      reason:
+        cleaned.length === 0 || /\p{L}/u.test(cleaned) ? 'too_short' : 'no_terms',
+    };
+  }
 
   if (query.length < CATALOG_LIMITS.minQueryLength) {
     return { ok: false, reason: 'too_short' };
@@ -127,6 +153,68 @@ export function normalizeQuery(raw: string): NormalizedQuery {
   return { ok: true, query, terms };
 }
 
+function removeQuantities(cleaned: string): string {
+  if (cleaned.length === 0) {
+    return '';
+  }
+
+  const tokens = cleaned.split(' ');
+  const kept: string[] = [];
+  let pluralizeNext = false;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+
+    if (!NUMBER_TOKEN.test(token)) {
+      kept.push(pluralizeNext ? pluralizeSpanish(token) : token);
+      pluralizeNext = false;
+      continue;
+    }
+
+    const next = tokens[index + 1];
+    if (next !== undefined && UNIT_WORDS.has(next)) {
+      index += 1;
+      if (
+        tokens[index + 1] !== undefined &&
+        QUANTITY_CONNECTORS.has(tokens[index + 1])
+      ) {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (next !== undefined && QUANTITY_CONNECTORS.has(next)) {
+      index += 1;
+    }
+    pluralizeNext = true;
+  }
+
+  return kept.join(' ');
+}
+
+function pluralizeSpanish(word: string): string {
+  if (!/^\p{L}+$/u.test(word) || word.length < 2) {
+    return word;
+  }
+  if (word.endsWith('s') && word.length > 3) {
+    return word;
+  }
+  if (word.endsWith('z')) {
+    return `${word.slice(0, -1)}ces`;
+  }
+  if (word.endsWith('ión')) {
+    return `${word.slice(0, -3)}iones`;
+  }
+  if (/[aeiouáéíóú]$/u.test(word)) {
+    return `${word}s`;
+  }
+  return `${stripAccents(word)}es`;
+}
+
+function stripAccents(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}+/gu, '');
+}
+
 function isSignificantTerm(term: string): boolean {
   if (term.length < 2 || /^\d+$/.test(term)) {
     return false;
@@ -146,9 +234,8 @@ function isSignificantTerm(term: string): boolean {
  * 2. Si ninguna categoría lo contiene, se acepta el término como palabra del
  *    nombre o la marca, con plural y acentos.
  *
- * Los demás términos solo ordenan. Se elige la primera presentación con precio
- * positivo y se corta en `maxResults`, así el usuario nunca recibe el catálogo
- * completo.
+ * Los demás términos solo ordenan. No se corta la lista: el usuario ve todas
+ * las presentaciones de la familia que devuelve VTEX.
  */
 export function toCatalogResults(
   data: unknown,
@@ -204,6 +291,7 @@ export function toCatalogResults(
         brand,
         presentation: readPresentation(offer.itemName, name, brand),
         priceCents: offer.priceCents,
+        imageUrl: offer.imageUrl,
       },
       categoryMatch,
       haystack: `${nameHaystack} ${categoryHaystack}`,
@@ -227,14 +315,14 @@ export function toCatalogResults(
     return left.result.name.localeCompare(right.result.name, 'es');
   });
 
-  return scored
-    .slice(0, CATALOG_LIMITS.maxResults)
-    .map((entry) => entry.result);
+  return scored.map((entry) => entry.result);
 }
 
-function pickOffer(
-  product: Record<string, unknown>,
-): { itemName: string | null; priceCents: number } | null {
+function pickOffer(product: Record<string, unknown>): {
+  itemName: string | null;
+  priceCents: number;
+  imageUrl: string | null;
+} | null {
   const items = Array.isArray(product.items) ? product.items : [];
   for (const rawItem of items) {
     const item = asRecord(rawItem);
@@ -265,10 +353,39 @@ function pickOffer(
       }
       const itemName =
         readText(item.nameComplete, 200) ?? readText(item.name, 200);
-      return { itemName, priceCents };
+      return {
+        itemName,
+        priceCents,
+        imageUrl: readImageUrl(item),
+      };
     }
   }
   return null;
+}
+
+function readImageUrl(item: Record<string, unknown>): string | null {
+  const images = Array.isArray(item.images) ? item.images : [];
+  for (const rawImage of images) {
+    const image = asRecord(rawImage);
+    if (!image) {
+      continue;
+    }
+    const candidate = readText(image.imageUrl, 500);
+    const httpsUrl = candidate === null ? null : toHttpsUrl(candidate);
+    if (httpsUrl !== null) {
+      return httpsUrl;
+    }
+  }
+  return null;
+}
+
+function toHttpsUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 function readPresentation(
@@ -308,17 +425,24 @@ function scoreMatch(haystack: string, terms: readonly string[]): number {
 }
 
 /**
- * Compara por palabras completas, admitiendo el plural español.
- *
- * No se usa `includes`: con `pan` haría match con `panela`, que es otra
- * familia. Para términos de cuatro letras o más se admite un prefijo corto,
- * de modo que `yogur` encuentra `yogurt` sin abrir la puerta a `panela`.
+ * Compara por palabras completas, admitiendo el plural español en ambos
+ * sentidos. No se usa `includes`: con `pan` haría match con `panela`, que es
+ * otra familia. Para términos de cuatro letras o más se admite un prefijo
+ * corto, de modo que `yogur` encuentra `yogurt` sin abrir la puerta a `panela`.
  */
 function matchesTerm(haystack: string, term: string): boolean {
+  const termForms = singularForms(term);
   const words = haystack.split(' ').filter((word) => word.length > 0);
   return words.some((word) => {
     if (word === term || word === `${term}s` || word === `${term}es`) {
       return true;
+    }
+    // El término ya viene en plural (`sardinas`): también vale el singular
+    // que aparece en el nombre o la categoría (`sardina`).
+    for (const form of singularForms(word)) {
+      if (termForms.has(form)) {
+        return true;
+      }
     }
     return (
       term.length >= 4 &&
@@ -326,6 +450,25 @@ function matchesTerm(haystack: string, term: string): boolean {
       word.length <= term.length + 3
     );
   });
+}
+
+/**
+ * Formas singulares probables de una palabra. Se generan varias porque el
+ * plural español no siempre se deshace con una sola regla: `leches` → `leche`
+ * (quitar la `s`) y `arroces` → `arroz` (quitar `es` y recuperar la `z`).
+ */
+function singularForms(word: string): Set<string> {
+  const forms = new Set<string>([word]);
+  if (word.endsWith('ces') && word.length > 4) {
+    forms.add(`${word.slice(0, -3)}z`);
+  }
+  if (word.endsWith('es') && word.length > 4) {
+    forms.add(word.slice(0, -2));
+  }
+  if (word.endsWith('s') && word.length > 3) {
+    forms.add(word.slice(0, -1));
+  }
+  return forms;
 }
 
 function normalizeForMatch(text: string): string {

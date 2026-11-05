@@ -62,6 +62,7 @@ const products = [
     brand: 'Bimbo',
     presentation: null,
     priceCents: 17525,
+    imageUrl: null,
   },
 ];
 

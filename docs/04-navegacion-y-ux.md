@@ -193,8 +193,10 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - Cabecera: “Detalle”, nombre del artículo y botón de cerrar. El gesto de cerrar y el botón Atrás piden confirmación para no perder lo escrito.
 - Sección **“Marcas y presentaciones”**:
   - al abrir, la app busca **sola** con el nombre del artículo; el usuario no escribe nada (D-52);
+  - la consulta descarta cantidades y números sueltos y pluraliza el sustantivo: `1 sardina` busca `sardinas` (D-53);
   - mientras busca: spinner y “Buscando en La Sirena…”;
-  - resultados: máximo 8, cada uno con marca, nombre, presentación y precio; se elige con un toque;
+  - resultados: **todos** los de la familia, sin límite artificial; cada uno con su imagen de La Sirena, marca, nombre, presentación y precio; se elige con un toque;
+  - si falta la imagen, se muestra un recuadro neutro sin romper la fila;
   - al elegir: se rellenan marca, precio y cantidad `1`, y la unidad queda en “Unidad”;
   - si no hay resultados: “No encontramos presentaciones para «pan»” y se ofrece el formulario manual.
 - El campo **“Buscar en La Sirena”** solo corrige la consulta: no busca mientras se escribe; hay que pulsar “Buscar”.
@@ -530,5 +532,5 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Fecha | Formateador propio en español; sin `Intl` en la UI. |
 | Historial | `SectionList` por mes; sin paginación. |
 | Modo de compra | Selector al empezar; fijo hasta cerrar o cancelar. |
-| Catálogo | Ayuda opcional, nunca paso obligatorio; búsqueda automática y máximo 8 resultados. |
+| Catálogo | Ayuda opcional, nunca paso obligatorio; búsqueda automática, sin límite artificial de resultados, con imagen por presentación. |
 | Total | Solo en compras con La Sirena; exacto, parcial o “Aún no hay precios”. |

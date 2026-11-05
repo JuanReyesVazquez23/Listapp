@@ -1,6 +1,6 @@
 import {
-  CATALOG_LIMITS,
   normalizeQuery,
+  readTotalFromResources,
   toCatalogResults,
 } from '../../api/_catalogCore';
 
@@ -13,6 +13,7 @@ function product(
     itemName?: string;
     categories?: string[];
     offerKey?: 'commertialOffer' | 'commercialOffer';
+    imageUrl?: string;
   } = {},
 ) {
   const offerKey = options.offerKey ?? 'commertialOffer';
@@ -24,6 +25,13 @@ function product(
     items: [
       {
         nameComplete: options.itemName ?? productName,
+        images: [
+          {
+            imageUrl:
+              options.imageUrl ??
+              'https://gruporamos.vteximg.com.br/arquivos/ids/164483/pan.jpg',
+          },
+        ],
         sellers: [
           {
             [offerKey]: { Price: options.price ?? 120.5 },
@@ -43,6 +51,24 @@ describe('normalizeQuery', () => {
     });
   });
 
+  it('pluraliza el sustantivo cuando va precedido de una cantidad', () => {
+    expect(normalizeQuery('1 sardina')).toEqual({
+      ok: true,
+      query: 'sardinas',
+      terms: ['sardinas'],
+    });
+    expect(normalizeQuery('3 pan')).toEqual({
+      ok: true,
+      query: 'panes',
+      terms: ['panes'],
+    });
+    expect(normalizeQuery('2 arroz')).toEqual({
+      ok: true,
+      query: 'arroces',
+      terms: ['arroces'],
+    });
+  });
+
   it('conserva las palabras significativas y descarta stopwords', () => {
     expect(normalizeQuery('Pan de molde')).toEqual({
       ok: true,
@@ -51,10 +77,27 @@ describe('normalizeQuery', () => {
     });
   });
 
+  it('descarta números sueltos aunque no sean la primera palabra', () => {
+    expect(normalizeQuery('100% leche')).toEqual({
+      ok: true,
+      query: 'leches',
+      terms: ['leches'],
+    });
+    expect(normalizeQuery('leche 2')).toEqual({
+      ok: true,
+      query: 'leche',
+      terms: ['leche'],
+    });
+  });
+
   it('rechaza consultas vacías, de una letra o solo unidades', () => {
     expect(normalizeQuery('')).toMatchObject({ ok: false, reason: 'too_short' });
     expect(normalizeQuery('a')).toMatchObject({ ok: false, reason: 'too_short' });
     expect(normalizeQuery('2 kg')).toMatchObject({ ok: false, reason: 'too_short' });
+    expect(normalizeQuery('123 456')).toMatchObject({
+      ok: false,
+      reason: 'no_terms',
+    });
   });
 
   it('rechaza más de cinco palabras', () => {
@@ -72,8 +115,21 @@ describe('normalizeQuery', () => {
   });
 });
 
+describe('readTotalFromResources', () => {
+  it('lee el total de la cabecera de VTEX', () => {
+    expect(readTotalFromResources('0-49/297')).toBe(297);
+    expect(readTotalFromResources('0-49/0')).toBe(0);
+  });
+
+  it('devuelve null si la cabecera falta o está rota', () => {
+    expect(readTotalFromResources(null)).toBeNull();
+    expect(readTotalFromResources('0-49')).toBeNull();
+    expect(readTotalFromResources('muchos')).toBeNull();
+  });
+});
+
 describe('toCatalogResults', () => {
-  it('lee el campo VTEX correcto y convierte el precio a céntimos', () => {
+  it('lee el campo VTEX correcto, convierte el precio y toma la imagen', () => {
     const results = toCatalogResults(
       [product('1', 'Pan Blanco', { brand: 'Bimbo', price: 175.25 })],
       ['pan'],
@@ -86,8 +142,22 @@ describe('toCatalogResults', () => {
         brand: 'Bimbo',
         presentation: null,
         priceCents: 17525,
+        imageUrl:
+          'https://gruporamos.vteximg.com.br/arquivos/ids/164483/pan.jpg',
       },
     ]);
+  });
+
+  it('deja la imagen en null si la URL no es HTTPS o falta', () => {
+    const results = toCatalogResults(
+      [
+        product('1', 'Pan Blanco', { imageUrl: 'http://ejemplo.com/pan.jpg' }),
+        product('2', 'Pan Integral', { imageUrl: 'no-es-una-url' }),
+      ],
+      ['pan'],
+    );
+
+    expect(results.map((entry) => entry.imageUrl)).toEqual([null, null]);
   });
 
   it('ignora `commercialOffer`, la errata que no existe en VTEX', () => {
@@ -115,21 +185,21 @@ describe('toCatalogResults', () => {
     ]);
   });
 
-  it('acepta plurales y acentos', () => {
-    const results = toCatalogResults(
+  it('acepta plurales y acentos en ambos sentidos', () => {
+    const pans = toCatalogResults(
       [
         product('1', 'Panes Integrales'),
         product('2', 'Leche Entera', { categories: ['/Lácteos/Leche/'] }),
       ],
       ['pan'],
     );
-    expect(results.map((entry) => entry.productId)).toEqual(['1']);
+    expect(pans.map((entry) => entry.productId)).toEqual(['1']);
 
-    const milk = toCatalogResults(
-      [product('3', 'Leche Entera', { categories: ['/Lácteos/Leche/'] })],
-      ['leche'],
+    const sardines = toCatalogResults(
+      [product('3', 'Sardina Criolla Lb', { categories: ['/Supermercado/Sardinas/'] })],
+      ['sardinas'],
     );
-    expect(milk).toHaveLength(1);
+    expect(sardines.map((entry) => entry.productId)).toEqual(['3']);
   });
 
   it('prioriza la categoría de la familia y descarta otros usos del término', () => {
@@ -175,13 +245,13 @@ describe('toCatalogResults', () => {
     expect(results[results.length - 1].name).toBe('Leche Deslactosada');
   });
 
-  it('corta en el máximo de resultados', () => {
+  it('devuelve todos los resultados de la familia, sin corte artificial', () => {
     const catalog = Array.from({ length: 20 }, (_, index) =>
       product(String(index), `Pan número ${index}`),
     );
 
     const results = toCatalogResults(catalog, ['pan']);
-    expect(results).toHaveLength(CATALOG_LIMITS.maxResults);
+    expect(results).toHaveLength(20);
   });
 
   it('deduplica por producto y descarta precios no válidos', () => {

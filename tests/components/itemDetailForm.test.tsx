@@ -22,6 +22,7 @@ const products = [
     brand: 'Bimbo',
     presentation: 'Pan Blanco Grande 500 g',
     priceCents: 17525,
+    imageUrl: 'https://gruporamos.vteximg.com.br/arquivos/ids/164483/pan.jpg',
   },
 ];
 
@@ -64,6 +65,22 @@ describe('ItemDetailForm', () => {
     expect(screen.getByText('Pan Blanco')).toBeTruthy();
     expect(screen.getByText('Pan Blanco Grande 500 g')).toBeTruthy();
     expect(screen.getByText('RD$175.25')).toBeTruthy();
+    expect(screen.getByTestId('catalog-product-image')).toBeTruthy();
+  });
+
+  it('muestra un placeholder cuando la presentación no tiene imagen', async () => {
+    await renderForm({
+      catalog: {
+        status: 'ready',
+        query: 'pan',
+        products: [{ ...products[0], imageUrl: null }],
+      },
+    });
+
+    expect(
+      screen.getByTestId('catalog-product-image-placeholder'),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('catalog-product-image')).toBeNull();
   });
 
   it('al elegir una presentación rellena marca, precio y cantidad', async () => {

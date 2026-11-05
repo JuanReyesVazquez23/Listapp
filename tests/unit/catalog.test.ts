@@ -46,10 +46,10 @@ describe('buildCatalogQuery', () => {
     });
   });
 
-  it('sanea el signo de porcentaje', () => {
+  it('sanea el signo de porcentaje y descarta el número', () => {
     expect(buildCatalogQuery('100% leche')).toEqual({
       ok: true,
-      query: '100 leche',
+      query: 'leches',
     });
   });
 
@@ -62,6 +62,23 @@ describe('buildCatalogQuery', () => {
       ok: true,
       query: 'leche',
     });
+  });
+
+  it('pluraliza el sustantivo que sigue a una cantidad', () => {
+    expect(buildCatalogQuery('1 sardina')).toEqual({
+      ok: true,
+      query: 'sardinas',
+    });
+    expect(buildCatalogQuery('3 pan')).toEqual({ ok: true, query: 'panes' });
+    expect(buildCatalogQuery('2 arroz')).toEqual({ ok: true, query: 'arroces' });
+    expect(buildCatalogQuery('1 de sardina')).toEqual({
+      ok: true,
+      query: 'sardinas',
+    });
+  });
+
+  it('descarta números sueltos que no son una cantidad inicial', () => {
+    expect(buildCatalogQuery('leche 2')).toEqual({ ok: true, query: 'leche' });
   });
 
   it('no elimina números pegados a letras', () => {
