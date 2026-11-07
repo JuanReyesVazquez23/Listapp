@@ -151,7 +151,8 @@ listapp/
                                  # usePurchaseDetail, useItemDetail
       navigation/                # applyGuard: traduce las guardas a replace
     useCases/                    # lists, items, shopping, history, catalog
-    domain/                      # list, item, purchase, catalog, money, quantity,
+    domain/                      # list, item, purchase, catalog, catalogMeasure,
+                                 # catalogResults, money, quantity,
                                  # lifecycle, navigation, validation, progress, dates
     infrastructure/              # Todo el acceso a SQLite y al almacenamiento local
       databaseManager.ts         # open / boot / close / estado
@@ -283,9 +284,10 @@ El catálogo es **opcional y de solo lectura**; nunca participa en una transacci
 2. En modo `catalog`, al abrir el detalle de un artículo, `useItemDetail` carga el ítem y su lista, y lanza **una** búsqueda automática con el nombre del artículo (D-52). El campo de búsqueda solo corrige la consulta.
 3. `searchCatalog` valida la consulta y llama a `catalogClient.search`, que hace `GET {EXPO_PUBLIC_CATALOG_API_URL}?q=…` con `AbortController`. Cada búsqueda cancela la anterior.
 4. El backend `api/catalog.ts` valida `q`, pagina VTEX de 50 en 50 hasta agotar los resultados (tope de seguridad de 2000 productos crudos), filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con todas las presentaciones y su `imageUrl`.
-5. Elegir una presentación rellena marca, precio y cantidad 1 en el formulario. Guardar ejecuta `checkItem` con el detalle; si la línea ya estaba marcada, `updateItemDetail`.
-6. El total se calcula en el dominio con `computePurchaseTotal`: `null` si ninguna línea marcada tiene precio, parcial si faltan algunas, exacto si todas lo tienen. Se guarda en `lists.total_cents` al finalizar.
-7. Cualquier fallo de red, timeout o respuesta inválida deja el formulario manual disponible: la app **nunca** bloquea el marcado por el catálogo.
+5. `catalogMeasure` interpreta el tamaño de cada presentación y calcula su precio por libra, litro o unidad; `catalogResults` filtra por texto y marca, y ordena por relevancia, precio o precio por medida (D-54). Todo ocurre en memoria sobre lo ya cargado: no hay peticiones adicionales.
+6. Elegir una presentación rellena marca, precio y cantidad 1 en el formulario. Guardar ejecuta `checkItem` con el detalle; si la línea ya estaba marcada, `updateItemDetail`.
+7. El total se calcula en el dominio con `computePurchaseTotal`: `null` si ninguna línea marcada tiene precio, parcial si faltan algunas, exacto si todas lo tienen. Se guarda en `lists.total_cents` al finalizar.
+8. Cualquier fallo de red, timeout o respuesta inválida deja el formulario manual disponible: la app **nunca** bloquea el marcado por el catálogo.
 
 La consulta al backend no pasa por la cola de SQLite ni abre transacción: es una lectura remota que solo alimenta la UI.
 

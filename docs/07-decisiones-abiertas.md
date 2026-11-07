@@ -99,6 +99,7 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-51 | Visibilidad del modo | **Chip “Con La Sirena” solo en modo catálogo**; la compra normal conserva su interfaz actual. | Mostrar un chip en normal contradice “idéntica a hoy”. | 01, 04 |
 | D-52 | Sugerencias al marcar | **Automáticas:** al abrir el detalle se busca con el nombre del artículo y se muestran sus marcas y presentaciones sin escribir nada. El campo de búsqueda solo corrige la consulta. | Es el comportamiento inteligente que pidió el usuario; obligarle a teclear convierte la ayuda en trabajo. | 01, 04 |
 | D-53 | Consulta e imágenes del catálogo | **La consulta descarta cantidades y números sueltos y pluraliza el sustantivo** (`1 sardina` → `sardinas`); cada resultado incluye la `imageUrl` de La Sirena y un placeholder si falta. | VTEX devuelve cero con `1 sardina` y el usuario pidió reconocer cada presentación por su imagen. | 01, 02, 04 |
+| D-54 | Filtros, orden y precio por medida | **Todo se calcula en el cliente sobre los resultados ya cargados.** El tamaño se interpreta desde nombre y presentación, se compara por libra, litro o unidad y se muestra redondeado a céntimos; sin medida reconocible no se muestra precio por medida. Los filtros se reinician al cambiar la consulta. | Con familias de cientos de presentaciones el precio suelto no permite comparar; el backend no devuelve una medida estructurada y no hace falta otra petición. | 01, 04, 05 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 
@@ -154,6 +155,7 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-37 | 31 oct 2026 | Céntimos y milésimas enteras; moneda DOP | Orquestador, regla de dinero de la skill |
 | D-38 | 31 oct 2026 | Backend Node.js en Vercel; búsqueda por nombre y sin límite artificial de resultados | Usuario (Vercel) |
 | D-53 | 5 nov 2026 | Limpiar cantidades, pluralizar el sustantivo y devolver la imagen de cada presentación | Usuario |
+| D-54 | 7 nov 2026 | Filtros y orden locales; precio por libra, litro o unidad calculado desde el texto | Usuario |
 | D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
 | D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |

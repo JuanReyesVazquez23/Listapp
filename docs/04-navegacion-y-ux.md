@@ -197,7 +197,15 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - mientras busca: spinner y “Buscando en La Sirena…”;
   - resultados: **todos** los de la familia, sin límite artificial; cada uno con su imagen de La Sirena, marca, nombre, presentación y precio; se elige con un toque;
   - si falta la imagen, se muestra un recuadro neutro sin romper la fila;
+  - contador de presentaciones (“208 presentaciones” o “12 de 208 presentaciones” al filtrar);
+  - filtros locales sobre lo ya cargado, sin peticiones nuevas (D-54):
+    - texto libre que compara marca, nombre y presentación sin distinguir mayúsculas ni acentos;
+    - chips de marca, con “Todas” para quitar el filtro;
+    - orden por relevancia, menor precio, mayor precio o mejor precio por medida;
+    - “Limpiar filtros” cuando hay alguno activo y mensaje “Ninguna presentación coincide con el filtro.” si nada coincide;
+  - cuando el nombre o la presentación declaran tamaño (`500 g`, `2 L`, `30 und`), bajo el precio se muestra el precio por libra, litro o unidad (`RD$158.98/lb`); si no hay medida reconocible, no se inventa;
   - al elegir: se rellenan marca, precio y cantidad `1`, y la unidad queda en “Unidad”;
+  - al cambiar la consulta, los filtros y el orden vuelven a su estado inicial;
   - si no hay resultados: “No encontramos presentaciones para «pan»” y se ofrece el formulario manual.
 - El campo **“Buscar en La Sirena”** solo corrige la consulta: no busca mientras se escribe; hay que pulsar “Buscar”.
 - Si la red falla:

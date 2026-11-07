@@ -59,6 +59,17 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
   - `imageUrl` HTTPS y `null` si falta o no es válida;
   - deduplicación y precios inválidos.
 - Cliente del catálogo: conserva todos los resultados, envía la consulta sin límite y descarta imágenes que no sean HTTPS.
+- Medida y precio por medida (`src/domain/catalogMeasure.ts`):
+  - interpreta gramos, kilos, libras, onzas, mililitros, litros, galones y unidades;
+  - elige la última medida del texto y no confunde `kg` con `g` ni `lt` con `l`;
+  - convierte el precio a libra, litro o unidad con un solo redondeo;
+  - devuelve `null` sin medida reconocible o con precio o cantidad inválidos.
+- Filtros y orden (`src/domain/catalogResults.ts`):
+  - filtra por texto sin distinguir mayúsculas ni acentos sobre marca, nombre y presentación;
+  - combina texto y marca;
+  - ordena por precio y por precio por medida;
+  - agrupa por libra, litro y unidad y deja al final las presentaciones sin medida;
+  - recoge las marcas por frecuencia.
 
 ## 3. Pruebas de integración con `node:sqlite`
 
@@ -158,8 +169,12 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - en modo `catalog`: rol botón, abre el detalle y no marca;
   - muestra “Bimbo · 1.5 Libra · RD$3.00”.
 - `ItemDetailForm`:
-  - pinta las marcas ya buscadas sin escribir;
+  - pinta las marcas ya buscadas sin escribir, con imagen y placeholder;
   - elegir presentación rellena marca, cantidad y precio;
+  - muestra el precio por medida y lo incluye en la etiqueta accesible;
+  - filtra por texto y por marca sin pedir otra búsqueda;
+  - ordena por precio y por mejor precio por medida;
+  - avisa cuando ningún resultado coincide y “Limpiar filtros” los restablece;
   - guardar envía el detalle validado;
   - errores por campo bloquean el envío;
   - el buscador no consulta mientras se escribe;
@@ -313,6 +328,10 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir, y cada una muestra su imagen.
 - [ ] Un artículo llamado “1 sardina” busca “sardinas” y muestra varias presentaciones, no cero.
 - [ ] “Queso” muestra todas las presentaciones de la familia, sin quedarse en 8.
+- [ ] Con una familia larga, el contador dice cuántas presentaciones hay y filtrar por texto o marca reduce la lista al instante, sin volver a cargar.
+- [ ] Ordenar por menor precio, mayor precio y mejor precio por medida cambia el orden de forma visible; las presentaciones sin medida quedan al final.
+- [ ] Una presentación de `500 g` o `2 L` muestra su precio por libra o litro; una sin tamaño no muestra una cifra inventada.
+- [ ] Limpiar filtros devuelve todas las presentaciones y cambia la consulta reinicia filtros y orden.
 - [ ] Elegir una presentación rellena marca, precio y cantidad; se puede ajustar cantidad y unidad.
 - [ ] Guardar deja la fila con marca, cantidad, subtotal y check; el total de la compra se actualiza.
 - [ ] Omitir marca sin precio; el total pasa a parcial o “Aún no hay precios”.
@@ -424,7 +443,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, imágenes por presentación y familia completa sin corte artificial. Verificación local: `npx tsc --noEmit`, `npm run lint`, 35 suites / 258 pruebas en verde y `npx expo export --platform android` correcto. Backend desplegado en producción (`dpl_7rEjQWifHjv2RQrc7PjsMbkHKX91`) y verificado con `pan` (102), `1 sardina` (27), `queso` (208) y `2 kg de arroz` (85), todas con `imageUrl` HTTPS. APK `preview` build `35d9af56-91a9-45a5-b96a-c634a614655b` (versionCode 2) descargado en `C:\Users\jeanx\Downloads\listapp-preview.apk`. Queda pendiente de entrega: instalarlo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
+**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales y precio por libra, litro o unidad. Verificación local: `npx tsc --noEmit`, `npm run lint`, 37 suites / 283 pruebas en verde y `npx expo export --platform android` correcto. Backend desplegado en producción (`dpl_7rEjQWifHjv2RQrc7PjsMbkHKX91`) y verificado con `pan` (102), `1 sardina` (27), `queso` (208) y `2 kg de arroz` (85), todas con `imageUrl` HTTPS. APK `preview` build `35d9af56-91a9-45a5-b96a-c634a614655b` (versionCode 2) descargado en `C:\Users\jeanx\Downloads\listapp-preview.apk`. Queda pendiente de entrega: instalar el APK con filtros en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
 
 ## 11. Definición de terminado (MVP)
 
