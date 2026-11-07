@@ -170,6 +170,8 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - muestra “Bimbo · 1.5 Libra · RD$3.00”.
 - `ItemDetailForm`:
   - pinta las marcas ya buscadas sin escribir, con imagen y placeholder;
+  - vuelve al placeholder si la imagen falla;
+  - virtualiza familias grandes: no monta cientos de filas a la vez;
   - elegir presentación rellena marca, cantidad y precio;
   - muestra el precio por medida y lo incluye en la etiqueta accesible;
   - filtra por texto y por marca sin pedir otra búsqueda;
@@ -327,7 +329,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Compra normal: el flujo es idéntico al de la versión anterior.
 - [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir, y cada una muestra su imagen.
 - [ ] Un artículo llamado “1 sardina” busca “sardinas” y muestra varias presentaciones, no cero.
-- [ ] “Queso” muestra todas las presentaciones de la familia, sin quedarse en 8.
+- [ ] “Queso” muestra todas las presentaciones de la familia, sin quedarse en 8, y el modal abre y desplaza con fluidez aunque haya cientos.
 - [ ] Con una familia larga, el contador dice cuántas presentaciones hay y filtrar por texto o marca reduce la lista al instante, sin volver a cargar.
 - [ ] Ordenar por menor precio, mayor precio y mejor precio por medida cambia el orden de forma visible; las presentaciones sin medida quedan al final.
 - [ ] Una presentación de `500 g` o `2 L` muestra su precio por libra o litro; una sin tamaño no muestra una cifra inventada.
@@ -443,7 +445,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales y precio por libra, litro o unidad. Verificación local: `npx tsc --noEmit`, `npm run lint`, 37 suites / 283 pruebas en verde y `npx expo export --platform android` correcto. Backend desplegado en producción (`dpl_7rEjQWifHjv2RQrc7PjsMbkHKX91`) y verificado con `pan` (102), `1 sardina` (27), `queso` (208) y `2 kg de arroz` (85), todas con `imageUrl` HTTPS. APK `preview` build `35d9af56-91a9-45a5-b96a-c634a614655b` (versionCode 2) descargado en `C:\Users\jeanx\Downloads\listapp-preview.apk`. Queda pendiente de entrega: instalar el APK con filtros en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
+**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales, precio por libra, litro o unidad y resultados virtualizados. Verificación local: `npx tsc --noEmit`, `npm run lint`, 37 suites / 285 pruebas en verde y `npx expo export --platform android` correcto. Backend desplegado en producción (`dpl_7rEjQWifHjv2RQrc7PjsMbkHKX91`) y verificado con `pan` (102), `1 sardina` (27), `queso` (208) y `2 kg de arroz` (85), todas con `imageUrl` HTTPS. APK `preview` build `35d9af56-91a9-45a5-b96a-c634a614655b` (versionCode 2) descargado en `C:\Users\jeanx\Downloads\listapp-preview.apk`; el APK con filtros y lista virtualizada se compila al cerrar esta corrección. Queda pendiente de entrega: instalar el APK nuevo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
 
 ## 11. Definición de terminado (MVP)
 

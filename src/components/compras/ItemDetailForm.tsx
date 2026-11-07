@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
+  type ListRenderItemInfo,
 } from 'react-native';
 
 import { CatalogFilters } from '@/components/compras/CatalogFilters';
@@ -18,6 +19,7 @@ import {
   collectCatalogBrands,
   filterCatalogEntries,
   sortCatalogEntries,
+  type CatalogEntry,
   type CatalogSort,
 } from '@/domain/catalogResults';
 import {
@@ -59,6 +61,14 @@ type FieldErrors = Partial<Record<'brand' | 'quantity' | 'unit' | 'price', strin
 
 const EMPTY_PRODUCTS: CatalogProduct[] = [];
 
+/**
+ * Filas que se montan de entrada y por lote. Con familias de cientos de
+ * presentaciones, montar todas las imágenes a la vez es lo que hacía que el
+ * detalle se sintiera pesado; la lista virtualizada solo mantiene las visibles.
+ */
+const INITIAL_ROWS = 8;
+const ROWS_PER_BATCH = 8;
+
 interface CatalogFilterState {
   query: string;
   text: string;
@@ -76,6 +86,10 @@ function idleFilters(query: string): CatalogFilterState {
  * La parte de catálogo es una ayuda, no un paso obligatorio: si no hay red, el
  * usuario completa marca, cantidad y precio a mano. Las sugerencias llegan ya
  * buscadas por el hook; este componente solo las pinta y aplica la elegida.
+ *
+ * El formulario completo vive dentro de una `FlatList` para virtualizar los
+ * resultados: la cabecera y el pie siempre están montados, pero las
+ * presentaciones solo se renderizan cuando entran en la ventana visible.
  */
 export function ItemDetailForm({
   item,
@@ -154,7 +168,7 @@ export function ItemDetailForm({
     setDraft((current) => ({ ...current, ...patch }));
   };
 
-  const selectProduct = (product: CatalogProduct) => {
+  const selectProduct = useCallback((product: CatalogProduct) => {
     // La presentación elegida manda sobre lo escrito: cantidad 1 y precio del
     // catálogo. La unidad queda en unidad y el usuario puede cambiarla.
     setDraft({
@@ -165,7 +179,19 @@ export function ItemDetailForm({
     });
     setSelectedProductId(product.productId);
     setErrors({});
-  };
+  }, []);
+
+  const renderCatalogEntry = useCallback(
+    ({ item: entry }: ListRenderItemInfo<CatalogEntry>) => (
+      <CatalogResultRow
+        entry={entry}
+        selected={entry.product.productId === selectedProductId}
+        disabled={isSaving}
+        onSelect={selectProduct}
+      />
+    ),
+    [isSaving, selectProduct, selectedProductId],
+  );
 
   const submit = () => {
     const validation = validateItemDetail(draft, selectedProductId);
@@ -184,11 +210,8 @@ export function ItemDetailForm({
     onSave(validation.value);
   };
 
-  return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.content}
-    >
+  const header = (
+    <View style={styles.headerBlock}>
       <View style={styles.itemHeader}>
         <AppText variant="h2" accessibilityRole="header">
           {item.name}
@@ -248,122 +271,35 @@ export function ItemDetailForm({
         ) : null}
 
         {catalog.status === 'ready' && catalog.products.length > 0 ? (
-          <View style={styles.resultsBlock}>
-            <CatalogFilters
-              brands={brands}
-              brand={brandFilter}
-              filterText={filterText}
-              sort={sort}
-              visibleCount={visibleEntries.length}
-              totalCount={entries.length}
-              disabled={isSaving}
-              onBrandChange={(brand) => updateFilters({ brand })}
-              onFilterTextChange={(text) => updateFilters({ text })}
-              onSortChange={(nextSort) => updateFilters({ sort: nextSort })}
-              onClear={clearFilters}
-            />
-
-            {visibleEntries.length === 0 ? (
-              <View style={styles.feedback} accessibilityLiveRegion="polite">
-                <AppText variant="body" style={styles.feedbackText}>
-                  {es.itemDetail.filteredEmpty}
-                </AppText>
-              </View>
-            ) : (
-              <View
-                accessibilityLabel={es.itemDetail.resultsLabel}
-                style={styles.results}
-              >
-                {visibleEntries.map(({ product, measure }) => {
-                  const selected = product.productId === selectedProductId;
-                  const measureText = measure
-                    ? es.itemDetail.pricePerMeasure(
-                        formatCents(measure.pricePerMeasureCents),
-                        es.itemDetail.measureUnits[measure.unit],
-                      )
-                    : undefined;
-                  const label = es.itemDetail.selectProduct(
-                    product.brand ?? product.name,
-                    product.brand ? product.name : (product.presentation ?? ''),
-                    formatCents(product.priceCents),
-                    measureText,
-                  );
-                  return (
-                    <Pressable
-                      key={product.productId}
-                      accessibilityRole="button"
-                      accessibilityLabel={label}
-                      accessibilityState={{ selected }}
-                      onPress={() => selectProduct(product)}
-                      style={({ pressed }) => [
-                        styles.product,
-                        selected && styles.productSelected,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <View style={styles.productImageFrame}>
-                        {product.imageUrl ? (
-                          <Image
-                            source={{ uri: product.imageUrl }}
-                            style={styles.productImage}
-                            resizeMode="contain"
-                            accessible={false}
-                            testID="catalog-product-image"
-                          />
-                        ) : (
-                          <View
-                            style={styles.productImagePlaceholder}
-                            testID="catalog-product-image-placeholder"
-                          />
-                        )}
-                      </View>
-                      <View style={styles.productText}>
-                        <AppText variant="bodyStrong" numberOfLines={2}>
-                          {product.brand ?? product.name}
-                        </AppText>
-                        {product.brand ? (
-                          <AppText
-                            variant="caption"
-                            style={styles.productDetail}
-                            numberOfLines={2}
-                          >
-                            {product.name}
-                          </AppText>
-                        ) : null}
-                        {product.brand && product.presentation ? (
-                          <AppText
-                            variant="caption"
-                            style={styles.productDetail}
-                            numberOfLines={2}
-                          >
-                            {product.presentation}
-                          </AppText>
-                        ) : null}
-                      </View>
-                      <View style={styles.productPriceGroup}>
-                        <AppText
-                          variant="bodyStrong"
-                          style={styles.productPrice}
-                        >
-                          {formatCents(product.priceCents)}
-                        </AppText>
-                        {measureText ? (
-                          <AppText
-                            variant="caption"
-                            style={styles.productMeasure}
-                          >
-                            {measureText}
-                          </AppText>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+          <CatalogFilters
+            brands={brands}
+            brand={brandFilter}
+            filterText={filterText}
+            sort={sort}
+            visibleCount={visibleEntries.length}
+            totalCount={entries.length}
+            disabled={isSaving}
+            onBrandChange={(brand) => updateFilters({ brand })}
+            onFilterTextChange={(text) => updateFilters({ text })}
+            onSortChange={(nextSort) => updateFilters({ sort: nextSort })}
+            onClear={clearFilters}
+          />
         ) : null}
+      </View>
+    </View>
+  );
 
+  const empty = (
+    <View style={styles.feedback} accessibilityLiveRegion="polite">
+      <AppText variant="body" style={styles.feedbackText}>
+        {es.itemDetail.filteredEmpty}
+      </AppText>
+    </View>
+  );
+
+  const footer = (
+    <View style={styles.footerBlock}>
+      <View style={styles.section}>
         <TextField
           label={es.itemDetail.searchLabel}
           placeholder={es.itemDetail.searchPlaceholder}
@@ -532,9 +468,139 @@ export function ItemDetailForm({
           </AppText>
         </Pressable>
       ) : null}
-    </ScrollView>
+    </View>
+  );
+
+  const showFilteredEmpty =
+    catalog.status === 'ready' &&
+    entries.length > 0 &&
+    visibleEntries.length === 0;
+
+  return (
+    <FlatList
+      data={visibleEntries}
+      keyExtractor={(entry) => entry.product.productId}
+      renderItem={renderCatalogEntry}
+      ListHeaderComponent={header}
+      ListFooterComponent={footer}
+      ListEmptyComponent={showFilteredEmpty ? empty : undefined}
+      ItemSeparatorComponent={CatalogSeparator}
+      extraData={`${selectedProductId ?? ''}:${isSaving ? 'saving' : ''}`}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      initialNumToRender={INITIAL_ROWS}
+      maxToRenderPerBatch={ROWS_PER_BATCH}
+      updateCellsBatchingPeriod={50}
+      windowSize={5}
+      removeClippedSubviews
+    />
   );
 }
+
+function CatalogSeparator() {
+  return <View style={styles.separator} />;
+}
+
+interface CatalogResultRowProps {
+  entry: CatalogEntry;
+  selected: boolean;
+  disabled: boolean;
+  onSelect(product: CatalogProduct): void;
+}
+
+/**
+ * Fila memoizada: al filtrar u ordenar, solo se vuelven a pintar las filas
+ * cuyos datos cambian. La imagen se libera al salir de la ventana de la lista.
+ */
+const CatalogResultRow = memo(function CatalogResultRow({
+  entry,
+  selected,
+  disabled,
+  onSelect,
+}: CatalogResultRowProps) {
+  const { product, measure } = entry;
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUri = imageFailed ? null : product.imageUrl;
+  const measureText = measure
+    ? es.itemDetail.pricePerMeasure(
+        formatCents(measure.pricePerMeasureCents),
+        es.itemDetail.measureUnits[measure.unit],
+      )
+    : undefined;
+  const label = es.itemDetail.selectProduct(
+    product.brand ?? product.name,
+    product.brand ? product.name : (product.presentation ?? ''),
+    formatCents(product.priceCents),
+    measureText,
+  );
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      onPress={() => onSelect(product)}
+      style={({ pressed }) => [
+        styles.product,
+        selected && styles.productSelected,
+        pressed && !disabled && styles.pressed,
+      ]}
+    >
+      <View style={styles.productImageFrame}>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.productImage}
+            resizeMode="contain"
+            accessible={false}
+            onError={() => setImageFailed(true)}
+            testID="catalog-product-image"
+          />
+        ) : (
+          <View
+            style={styles.productImagePlaceholder}
+            testID="catalog-product-image-placeholder"
+          />
+        )}
+      </View>
+      <View style={styles.productText}>
+        <AppText variant="bodyStrong" numberOfLines={2}>
+          {product.brand ?? product.name}
+        </AppText>
+        {product.brand ? (
+          <AppText
+            variant="caption"
+            style={styles.productDetail}
+            numberOfLines={2}
+          >
+            {product.name}
+          </AppText>
+        ) : null}
+        {product.brand && product.presentation ? (
+          <AppText
+            variant="caption"
+            style={styles.productDetail}
+            numberOfLines={2}
+          >
+            {product.presentation}
+          </AppText>
+        ) : null}
+      </View>
+      <View style={styles.productPriceGroup}>
+        <AppText variant="bodyStrong" style={styles.productPrice}>
+          {formatCents(product.priceCents)}
+        </AppText>
+        {measureText ? (
+          <AppText variant="caption" style={styles.productMeasure}>
+            {measureText}
+          </AppText>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+});
 
 interface UnitChipProps {
   unit: QuantityUnit;
@@ -589,7 +655,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[10],
+  },
+  headerBlock: {
     gap: spacing[4],
+    marginBottom: spacing[2],
+  },
+  footerBlock: {
+    gap: spacing[4],
+    marginTop: spacing[2],
+  },
+  separator: {
+    height: spacing[2],
   },
   itemHeader: {
     gap: spacing[1],
@@ -609,12 +685,6 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     color: colors.textSecondary,
-  },
-  resultsBlock: {
-    gap: spacing[3],
-  },
-  results: {
-    gap: spacing[2],
   },
   product: {
     minHeight: 56,

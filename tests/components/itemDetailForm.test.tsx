@@ -116,6 +116,34 @@ describe('ItemDetailForm', () => {
     expect(screen.queryByTestId('catalog-product-image')).toBeNull();
   });
 
+  it('vuelve al placeholder si la imagen no carga', async () => {
+    await renderForm();
+
+    await fireEvent(screen.getByTestId('catalog-product-image'), 'error');
+
+    expect(
+      screen.getByTestId('catalog-product-image-placeholder'),
+    ).toBeTruthy();
+  });
+
+  it('virtualiza familias grandes en vez de montar cientos de filas', async () => {
+    const manyProducts = Array.from({ length: 208 }, (_, index) => ({
+      ...products[0],
+      productId: String(index),
+      name: `Pan ${index}`,
+      presentation: null,
+    }));
+
+    await renderForm({
+      catalog: { status: 'ready', query: 'pan', products: manyProducts },
+    });
+
+    const renderedRows = screen.getAllByLabelText(/^Elegir /);
+    expect(renderedRows.length).toBeGreaterThan(0);
+    expect(renderedRows.length).toBeLessThan(manyProducts.length);
+    expect(screen.getByText('208 presentaciones')).toBeTruthy();
+  });
+
   it('filtra por texto y por marca sin pedir otra búsqueda', async () => {
     const { onSearch } = await renderForm({
       catalog: { status: 'ready', query: 'pan', products: mixedProducts },

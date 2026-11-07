@@ -196,7 +196,8 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
   - la consulta descarta cantidades y números sueltos y pluraliza el sustantivo: `1 sardina` busca `sardinas` (D-53);
   - mientras busca: spinner y “Buscando en La Sirena…”;
   - resultados: **todos** los de la familia, sin límite artificial; cada uno con su imagen de La Sirena, marca, nombre, presentación y precio; se elige con un toque;
-  - si falta la imagen, se muestra un recuadro neutro sin romper la fila;
+  - la lista está **virtualizada**: solo se montan las filas visibles, así una familia de cientos de presentaciones no bloquea el modal;
+  - si falta la imagen o falla la descarga, se muestra un recuadro neutro sin romper la fila;
   - contador de presentaciones (“208 presentaciones” o “12 de 208 presentaciones” al filtrar);
   - filtros locales sobre lo ya cargado, sin peticiones nuevas (D-54):
     - texto libre que compara marca, nombre y presentación sin distinguir mayúsculas ni acentos;
