@@ -8,10 +8,18 @@ import {
   View,
 } from 'react-native';
 
+import { CatalogFilters } from '@/components/compras/CatalogFilters';
 import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextField } from '@/components/ui/TextField';
 import type { CatalogProduct } from '@/domain/catalog';
+import {
+  buildCatalogEntries,
+  collectCatalogBrands,
+  filterCatalogEntries,
+  sortCatalogEntries,
+  type CatalogSort,
+} from '@/domain/catalogResults';
 import {
   validateItemDetail,
   type ItemDetailDraft,
@@ -49,6 +57,19 @@ interface ItemDetailFormProps {
 
 type FieldErrors = Partial<Record<'brand' | 'quantity' | 'unit' | 'price', string>>;
 
+const EMPTY_PRODUCTS: CatalogProduct[] = [];
+
+interface CatalogFilterState {
+  query: string;
+  text: string;
+  brand: string | null;
+  sort: CatalogSort;
+}
+
+function idleFilters(query: string): CatalogFilterState {
+  return { query, text: '', brand: null, sort: 'relevance' };
+}
+
 /**
  * Contenido del detalle de una línea de catálogo.
  *
@@ -79,6 +100,46 @@ export function ItemDetailForm({
   );
   const [searchText, setSearchText] = useState(item.name);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [filterState, setFilterState] = useState<CatalogFilterState>(() =>
+    idleFilters(catalogQueryFrom(catalog)),
+  );
+
+  const products = catalog.status === 'ready' ? catalog.products : EMPTY_PRODUCTS;
+  const entries = useMemo(() => buildCatalogEntries(products), [products]);
+  const brands = useMemo(() => collectCatalogBrands(entries), [entries]);
+
+  const catalogQuery = catalogQueryFrom(catalog);
+  // Cada búsqueda nueva empieza sin filtros: mantener una marca de la consulta
+  // anterior podría ocultar todos los resultados nuevos sin explicación. En vez
+  // de reiniciar con un efecto, los filtros guardan a qué consulta pertenecen y
+  // se ignoran si la consulta cambió.
+  const activeFilters =
+    filterState.query === catalogQuery
+      ? filterState
+      : idleFilters(catalogQuery);
+  const { text: filterText, brand: brandFilter, sort } = activeFilters;
+
+  const visibleEntries = useMemo(
+    () =>
+      sortCatalogEntries(
+        filterCatalogEntries(entries, {
+          text: filterText,
+          brand: brandFilter,
+        }),
+        sort,
+      ),
+    [brandFilter, entries, filterText, sort],
+  );
+
+  const updateFilters = (
+    patch: Partial<Pick<CatalogFilterState, 'text' | 'brand' | 'sort'>>,
+  ) => {
+    setFilterState({ ...activeFilters, ...patch, query: catalogQuery });
+  };
+
+  const clearFilters = () => {
+    setFilterState(idleFilters(catalogQuery));
+  };
 
   const quantity = parseQuantityToMilli(draft.quantity);
   const price = parseAmountToCents(draft.unitPrice);
@@ -187,75 +248,119 @@ export function ItemDetailForm({
         ) : null}
 
         {catalog.status === 'ready' && catalog.products.length > 0 ? (
-          <View
-            accessibilityLabel={es.itemDetail.resultsLabel}
-            style={styles.results}
-          >
-            {catalog.products.map((product) => {
-              const selected = product.productId === selectedProductId;
-              const label = es.itemDetail.selectProduct(
-                product.brand ?? product.name,
-                product.brand ? product.name : (product.presentation ?? ''),
-                formatCents(product.priceCents),
-              );
-              return (
-                <Pressable
-                  key={product.productId}
-                  accessibilityRole="button"
-                  accessibilityLabel={label}
-                  accessibilityState={{ selected }}
-                  onPress={() => selectProduct(product)}
-                  style={({ pressed }) => [
-                    styles.product,
-                    selected && styles.productSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.productImageFrame}>
-                    {product.imageUrl ? (
-                      <Image
-                        source={{ uri: product.imageUrl }}
-                        style={styles.productImage}
-                        resizeMode="contain"
-                        accessible={false}
-                        testID="catalog-product-image"
-                      />
-                    ) : (
-                      <View
-                        style={styles.productImagePlaceholder}
-                        testID="catalog-product-image-placeholder"
-                      />
-                    )}
-                  </View>
-                  <View style={styles.productText}>
-                    <AppText variant="bodyStrong" numberOfLines={2}>
-                      {product.brand ?? product.name}
-                    </AppText>
-                    {product.brand ? (
-                      <AppText
-                        variant="caption"
-                        style={styles.productDetail}
-                        numberOfLines={2}
-                      >
-                        {product.name}
-                      </AppText>
-                    ) : null}
-                    {product.brand && product.presentation ? (
-                      <AppText
-                        variant="caption"
-                        style={styles.productDetail}
-                        numberOfLines={2}
-                      >
-                        {product.presentation}
-                      </AppText>
-                    ) : null}
-                  </View>
-                  <AppText variant="bodyStrong" style={styles.productPrice}>
-                    {formatCents(product.priceCents)}
-                  </AppText>
-                </Pressable>
-              );
-            })}
+          <View style={styles.resultsBlock}>
+            <CatalogFilters
+              brands={brands}
+              brand={brandFilter}
+              filterText={filterText}
+              sort={sort}
+              visibleCount={visibleEntries.length}
+              totalCount={entries.length}
+              disabled={isSaving}
+              onBrandChange={(brand) => updateFilters({ brand })}
+              onFilterTextChange={(text) => updateFilters({ text })}
+              onSortChange={(nextSort) => updateFilters({ sort: nextSort })}
+              onClear={clearFilters}
+            />
+
+            {visibleEntries.length === 0 ? (
+              <View style={styles.feedback} accessibilityLiveRegion="polite">
+                <AppText variant="body" style={styles.feedbackText}>
+                  {es.itemDetail.filteredEmpty}
+                </AppText>
+              </View>
+            ) : (
+              <View
+                accessibilityLabel={es.itemDetail.resultsLabel}
+                style={styles.results}
+              >
+                {visibleEntries.map(({ product, measure }) => {
+                  const selected = product.productId === selectedProductId;
+                  const measureText = measure
+                    ? es.itemDetail.pricePerMeasure(
+                        formatCents(measure.pricePerMeasureCents),
+                        es.itemDetail.measureUnits[measure.unit],
+                      )
+                    : undefined;
+                  const label = es.itemDetail.selectProduct(
+                    product.brand ?? product.name,
+                    product.brand ? product.name : (product.presentation ?? ''),
+                    formatCents(product.priceCents),
+                    measureText,
+                  );
+                  return (
+                    <Pressable
+                      key={product.productId}
+                      accessibilityRole="button"
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected }}
+                      onPress={() => selectProduct(product)}
+                      style={({ pressed }) => [
+                        styles.product,
+                        selected && styles.productSelected,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.productImageFrame}>
+                        {product.imageUrl ? (
+                          <Image
+                            source={{ uri: product.imageUrl }}
+                            style={styles.productImage}
+                            resizeMode="contain"
+                            accessible={false}
+                            testID="catalog-product-image"
+                          />
+                        ) : (
+                          <View
+                            style={styles.productImagePlaceholder}
+                            testID="catalog-product-image-placeholder"
+                          />
+                        )}
+                      </View>
+                      <View style={styles.productText}>
+                        <AppText variant="bodyStrong" numberOfLines={2}>
+                          {product.brand ?? product.name}
+                        </AppText>
+                        {product.brand ? (
+                          <AppText
+                            variant="caption"
+                            style={styles.productDetail}
+                            numberOfLines={2}
+                          >
+                            {product.name}
+                          </AppText>
+                        ) : null}
+                        {product.brand && product.presentation ? (
+                          <AppText
+                            variant="caption"
+                            style={styles.productDetail}
+                            numberOfLines={2}
+                          >
+                            {product.presentation}
+                          </AppText>
+                        ) : null}
+                      </View>
+                      <View style={styles.productPriceGroup}>
+                        <AppText
+                          variant="bodyStrong"
+                          style={styles.productPrice}
+                        >
+                          {formatCents(product.priceCents)}
+                        </AppText>
+                        {measureText ? (
+                          <AppText
+                            variant="caption"
+                            style={styles.productMeasure}
+                          >
+                            {measureText}
+                          </AppText>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
         ) : null}
 
@@ -462,6 +567,10 @@ function UnitChip({ unit, selected, disabled, onPress }: UnitChipProps) {
   );
 }
 
+function catalogQueryFrom(catalog: CatalogState): string {
+  return catalog.status === 'idle' ? '' : catalog.query;
+}
+
 function catalogErrorMessage(reason: string): string {
   switch (reason) {
     case 'offline':
@@ -500,6 +609,9 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     color: colors.textSecondary,
+  },
+  resultsBlock: {
+    gap: spacing[3],
   },
   results: {
     gap: spacing[2],
@@ -542,8 +654,15 @@ const styles = StyleSheet.create({
   productDetail: {
     color: colors.textSecondary,
   },
+  productPriceGroup: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
   productPrice: {
     color: colors.text,
+  },
+  productMeasure: {
+    color: colors.textSecondary,
   },
   searchField: {
     marginTop: spacing[2],

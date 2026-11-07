@@ -104,8 +104,35 @@ export const es = {
     searchHint: 'La búsqueda usa el nombre del artículo.',
     autoSearchHint: 'Buscamos en La Sirena con el nombre del artículo.',
     resultsLabel: 'Resultados de La Sirena',
-    selectProduct: (brand: string, name: string, price: string) =>
-      `Elegir ${brand}, ${name}, ${price}`,
+    resultsCount: (visible: number, total: number) => {
+      const noun =
+        total === 1 ? '1 presentación' : `${total} presentaciones`;
+      return visible === total ? noun : `${visible} de ${noun}`;
+    },
+    filterLabel: 'Filtrar resultados',
+    filterPlaceholder: 'Marca o presentación',
+    brandFilterLabel: 'Marca',
+    brandFilterListLabel: 'Marcas disponibles',
+    allBrands: 'Todas',
+    sortLabel: 'Ordenar por',
+    sortRelevance: 'Relevancia',
+    sortPriceAsc: 'Menor precio',
+    sortPriceDesc: 'Mayor precio',
+    sortMeasureAsc: 'Mejor precio por medida',
+    clearFilters: 'Limpiar filtros',
+    filteredEmpty: 'Ninguna presentación coincide con el filtro.',
+    measureUnits: {
+      pound: 'lb',
+      liter: 'L',
+      unit: 'und',
+    },
+    pricePerMeasure: (price: string, unit: string) => `${price}/${unit}`,
+    selectProduct: (
+      brand: string,
+      name: string,
+      price: string,
+      measure?: string,
+    ) => `Elegir ${brand}, ${name}, ${price}${measure ? `, ${measure}` : ''}`,
     selectedProduct: 'Producto elegido',
     discardTitle: 'Descartar el detalle',
     discardBody: 'Los cambios de marca, cantidad o precio no se guardarán.',
