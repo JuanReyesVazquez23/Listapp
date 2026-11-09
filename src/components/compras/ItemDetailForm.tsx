@@ -1,12 +1,14 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
+  Keyboard,
   Pressable,
   StyleSheet,
   View,
   type ListRenderItemInfo,
+  type TextInputInstance,
 } from 'react-native';
 
 import { CatalogFilters } from '@/components/compras/CatalogFilters';
@@ -116,6 +118,65 @@ export function ItemDetailForm({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [filterState, setFilterState] = useState<CatalogFilterState>(() =>
     idleFilters(catalogQueryFrom(catalog)),
+  );
+
+  const listRef = useRef<FlatList<CatalogEntry>>(null);
+  const scrollOffsetRef = useRef(0);
+  const keyboardTopRef = useRef<number | null>(null);
+  const focusedFieldRef = useRef<TextInputInstance | null>(null);
+  const searchFieldRef = useRef<TextInputInstance>(null);
+  const brandFieldRef = useRef<TextInputInstance>(null);
+  const quantityFieldRef = useRef<TextInputInstance>(null);
+  const priceFieldRef = useRef<TextInputInstance>(null);
+
+  /**
+   * Desplaza el campo enfocado para que quede por encima del teclado.
+   *
+   * El formulario manual vive en el pie de la `FlatList`, así que con el
+   * teclado abierto los últimos campos quedaban tapados. Se mide el campo en
+   * coordenadas de pantalla y se avanza solo lo que desborda sobre el borde
+   * superior del teclado; cuando ya es visible no se mueve la lista.
+   */
+  const scrollFieldIntoView = useCallback((field: TextInputInstance | null) => {
+    const keyboardTop = keyboardTopRef.current;
+    if (!field || keyboardTop === null) {
+      return;
+    }
+    field.measureInWindow((_x, y, _width, height) => {
+      const overflow = y + height + spacing[3] - keyboardTop;
+      if (overflow > 0) {
+        listRef.current?.scrollToOffset({
+          offset: scrollOffsetRef.current + overflow,
+          animated: true,
+        });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
+      keyboardTopRef.current = event.endCoordinates.screenY;
+      // KeyboardAvoidingView aplica su padding en este mismo ciclo; se espera
+      // un frame para medir con el área visible ya reducida.
+      requestAnimationFrame(() => scrollFieldIntoView(focusedFieldRef.current));
+    });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardTopRef.current = null;
+    });
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, [scrollFieldIntoView]);
+
+  const focusField = useCallback(
+    (field: TextInputInstance | null) => {
+      focusedFieldRef.current = field;
+      // Si el teclado ya está abierto (por ejemplo, al pasar de cantidad a
+      // precio), no habrá otro `keyboardDidShow`: se corrige al instante.
+      scrollFieldIntoView(field);
+    },
+    [scrollFieldIntoView],
   );
 
   const products = catalog.status === 'ready' ? catalog.products : EMPTY_PRODUCTS;
@@ -301,10 +362,12 @@ export function ItemDetailForm({
     <View style={styles.footerBlock}>
       <View style={styles.section}>
         <TextField
+          ref={searchFieldRef}
           label={es.itemDetail.searchLabel}
           placeholder={es.itemDetail.searchPlaceholder}
           value={searchText}
           onChangeText={setSearchText}
+          onFocus={() => focusField(searchFieldRef.current)}
           onSubmitEditing={() => onSearch(searchText)}
           returnKeyType="search"
           autoCapitalize="none"
@@ -334,10 +397,12 @@ export function ItemDetailForm({
 
       <View style={styles.section}>
         <TextField
+          ref={brandFieldRef}
           label={es.itemDetail.brandLabel}
           placeholder={es.itemDetail.brandPlaceholder}
           value={draft.brand}
           onChangeText={(brand) => updateDraft({ brand })}
+          onFocus={() => focusField(brandFieldRef.current)}
           error={errors.brand}
           maxLength={60}
           autoCapitalize="words"
@@ -346,20 +411,24 @@ export function ItemDetailForm({
 
         <View style={styles.row}>
           <TextField
+            ref={quantityFieldRef}
             label={es.itemDetail.quantityLabel}
             placeholder={es.itemDetail.quantityPlaceholder}
             value={draft.quantity}
             onChangeText={(value) => updateDraft({ quantity: value })}
+            onFocus={() => focusField(quantityFieldRef.current)}
             error={errors.quantity}
             keyboardType="decimal-pad"
             editable={!isSaving}
             containerStyle={styles.flex}
           />
           <TextField
+            ref={priceFieldRef}
             label={es.itemDetail.priceLabel}
             placeholder={es.itemDetail.pricePlaceholder}
             value={draft.unitPrice}
             onChangeText={(value) => updateDraft({ unitPrice: value })}
+            onFocus={() => focusField(priceFieldRef.current)}
             error={errors.price}
             keyboardType="decimal-pad"
             editable={!isSaving}
@@ -478,6 +547,7 @@ export function ItemDetailForm({
 
   return (
     <FlatList
+      ref={listRef}
       data={visibleEntries}
       keyExtractor={(entry) => entry.product.productId}
       renderItem={renderCatalogEntry}
@@ -489,6 +559,10 @@ export function ItemDetailForm({
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
+      onScroll={(event) => {
+        scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+      }}
+      scrollEventThrottle={16}
       initialNumToRender={INITIAL_ROWS}
       maxToRenderPerBatch={ROWS_PER_BATCH}
       updateCellsBatchingPeriod={50}

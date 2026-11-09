@@ -167,7 +167,7 @@ export default function PurchaseDetailScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <AppText variant="h2" accessibilityRole="header" style={styles.title}>
-              {detail.list.supermarketName ?? ''}
+              {detail.list.supermarketName ?? detail.list.name}
             </AppText>
             <AppText variant="caption" style={styles.date}>
               {formatPurchaseDetail(

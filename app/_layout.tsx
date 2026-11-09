@@ -47,13 +47,6 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
-            name="lista/[id]/finalizar"
-            options={{
-              presentation: 'modal',
-              title: es.finish.title,
-            }}
-          />
-          <Stack.Screen
             name="lista/[id]/detalle/[itemId]"
             options={{
               presentation: 'modal',

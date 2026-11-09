@@ -1,7 +1,6 @@
 export const NAME_LIMITS = {
   list: 80,
   item: 100,
-  supermarket: 80,
 } as const;
 
 export type ValidationFailure = 'required' | 'too_long';
@@ -40,8 +39,4 @@ export function validateListName(raw: string): ValidationResult {
 
 export function validateItemName(raw: string): ValidationResult {
   return validateName(raw, NAME_LIMITS.item);
-}
-
-export function validateSupermarketName(raw: string): ValidationResult {
-  return validateName(raw, NAME_LIMITS.supermarket);
 }

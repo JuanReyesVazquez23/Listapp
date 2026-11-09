@@ -4,15 +4,11 @@ import {
   deleteCompletedListRow,
   findCompletedPurchaseSummaries,
   findListById,
-  findRecentSupermarketNames,
 } from '@/infrastructure/repositories/listsRepository';
 import { AppError } from '@/lib/errors';
 import { guardError } from '@/useCases/guards';
 import { getListDetail, type ListDetail } from '@/useCases/lists';
 import type { UseCaseDeps } from '@/useCases/types';
-
-/** Sugerencias que pide el modal de cierre: las últimas compras distintas. */
-export const SUPERMARKET_SUGGESTION_LIMIT = 8;
 
 /**
  * Historial completo, de la compra más reciente a la más antigua.
@@ -36,17 +32,6 @@ export async function getPurchaseDetail(
   listId: string,
 ): Promise<ListDetail> {
   return getListDetail(deps, listId);
-}
-
-/** Supermercados recientes para rellenar el campo con un toque. */
-export async function getSupermarketSuggestions(
-  deps: UseCaseDeps,
-  limit: number = SUPERMARKET_SUGGESTION_LIMIT,
-): Promise<string[]> {
-  if (limit <= 0) {
-    return [];
-  }
-  return deps.database.read((reader) => findRecentSupermarketNames(reader, limit));
 }
 
 /**

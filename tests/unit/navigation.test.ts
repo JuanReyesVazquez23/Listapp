@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 
 import {
-  finishGuard,
   listDetailGuard,
   purchaseGuard,
   shoppingGuard,
@@ -31,12 +30,6 @@ describe('guardas de ruta', () => {
   it('el modo compra deja pasar solo el estado shopping', () => {
     expect(shoppingGuard('shopping')).toBeNull();
     expect(shoppingGuard('completed')).toBe('purchase');
-  });
-
-  it('el modal de finalizar comparte las guardas del modo compra', () => {
-    expect(finishGuard('draft')).toBe('list');
-    expect(finishGuard('shopping')).toBeNull();
-    expect(finishGuard('completed')).toBe('purchase');
   });
 
   it('el detalle histórico redirige cada estado activo a su ruta', () => {

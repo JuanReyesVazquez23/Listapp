@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { SHOW_DB_DIAGNOSTICS } from '@/lib/flags';
 import { isAppError } from '@/lib/errors';
 import { es } from '@/strings/es';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -44,11 +43,6 @@ export function BootErrorScreen({ error, onRetry }: BootErrorScreenProps) {
           <View style={styles.action}>
             <PrimaryButton label={es.boot.retry} onPress={onRetry} />
           </View>
-        ) : null}
-        {SHOW_DB_DIAGNOSTICS ? (
-          <AppText variant="caption" style={styles.code}>
-            {es.boot.technicalCode}: {describeCode(error)}
-          </AppText>
         ) : null}
       </View>
     </SafeAreaView>
@@ -91,13 +85,6 @@ function describeBootError(error: unknown): ErrorContent {
   }
 }
 
-function describeCode(error: unknown): string {
-  if (isAppError(error)) {
-    return error.code;
-  }
-  return error instanceof Error ? error.name : 'UNKNOWN';
-}
-
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -131,9 +118,5 @@ const styles = StyleSheet.create({
   action: {
     alignSelf: 'stretch',
     marginTop: spacing[6],
-  },
-  code: {
-    color: colors.textMuted,
-    marginTop: spacing[4],
   },
 });

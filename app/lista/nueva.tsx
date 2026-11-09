@@ -1,8 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +8,7 @@ import {
 } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
+import { KeyboardAwareView } from '@/components/ui/KeyboardAwareView';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
@@ -51,10 +50,7 @@ export default function NewListScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAwareView style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -100,7 +96,7 @@ export default function NewListScreen() {
             </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
     </Screen>
   );
 }

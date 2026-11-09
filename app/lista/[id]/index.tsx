@@ -4,8 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   View,
 } from 'react-native';
@@ -17,6 +15,7 @@ import { StatusBadge } from '@/components/listas/StatusBadge';
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { KeyboardAwareView } from '@/components/ui/KeyboardAwareView';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
@@ -362,10 +361,7 @@ export default function ListDetailScreen() {
         }}
       />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAwareView style={styles.flex}>
         <FlatList
           data={detail.items}
           keyExtractor={(item) => item.id}
@@ -494,7 +490,7 @@ export default function ListDetailScreen() {
             <AddItemBar onAdd={handleAddItem} bottomInset={insets.bottom} />
           </>
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
 
       {snack ? (
         <Snackbar

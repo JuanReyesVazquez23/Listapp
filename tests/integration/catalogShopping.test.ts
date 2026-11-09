@@ -82,7 +82,6 @@ describe('compra con catálogo', () => {
 
     const completed = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'La Sirena',
       confirmZeroChecked: false,
     });
 
@@ -103,7 +102,6 @@ describe('compra con catálogo', () => {
 
     const completed = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'La Sirena',
       confirmZeroChecked: false,
     });
 
@@ -119,7 +117,6 @@ describe('compra con catálogo', () => {
 
     await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'La Sirena',
       confirmZeroChecked: false,
     });
 

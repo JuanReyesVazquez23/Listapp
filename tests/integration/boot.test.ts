@@ -22,7 +22,7 @@ describe('arranque de la base de datos', () => {
 
     expect(pragmas.foreignKeys?.foreign_keys).toBe(1);
     expect(pragmas.journal?.journal_mode).toBe('wal');
-    expect(pragmas.version?.user_version).toBe(2);
+    expect(pragmas.version?.user_version).toBe(3);
   });
 
   it('crea las tablas e índices de la v1', async () => {

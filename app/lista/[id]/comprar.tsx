@@ -1,11 +1,10 @@
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   View,
 } from 'react-native';
@@ -21,12 +20,14 @@ import {
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { KeyboardAwareView } from '@/components/ui/KeyboardAwareView';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { Snackbar } from '@/components/ui/Snackbar';
 import { shoppingGuard } from '@/domain/navigation';
 import { computePurchaseTotal } from '@/domain/purchase';
 import { useShopping } from '@/features/listas/hooks/useShopping';
+import { buildFinishConfirmation } from '@/features/listas/finishConfirmation';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { toUserMessage } from '@/lib/errorMessages';
 import { es } from '@/strings/es';
@@ -36,7 +37,7 @@ export default function ShoppingScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
-  const { status, detail, progress, error, pendingItemIds, toggleItem, addItem, cancel, reload } =
+  const { status, detail, progress, error, pendingItemIds, finishing, toggleItem, addItem, cancel, finish, reload } =
     useShopping(listId);
   const listStatus = detail?.list.status;
   const catalogMode = detail?.list.shoppingMode === 'catalog';
@@ -44,7 +45,6 @@ export default function ShoppingScreen() {
 
   const [snack, setSnack] = useState<string | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const openingFinishRef = useRef(false);
 
   const clearSnackTimer = useCallback(() => {
     if (snackTimer.current) {
@@ -66,13 +66,6 @@ export default function ShoppingScreen() {
   );
 
   useEffect(() => clearSnackTimer, [clearSnackTimer]);
-
-  // Al volver del modal, el botón queda libre para abrirlo otra vez.
-  useFocusEffect(
-    useCallback(() => {
-      openingFinishRef.current = false;
-    }, []),
-  );
 
   // Una ruta de compra solo es válida con estado `shopping`: el detalle es el
   // destino canónico del borrador y /compra/[id] el de una lista ya cerrada.
@@ -154,17 +147,48 @@ export default function ShoppingScreen() {
     ]);
   }, [confirmCancel, detail]);
 
+  /**
+   * Cierra la compra directamente: ya no hay un modal posterior que pregunte
+   * dónde se compró. Con 0 marcados se pide una confirmación explícita para no
+   * guardar una compra vacía por un toque accidental.
+   */
+  const completeFinish = useCallback(
+    async (confirmZeroChecked: boolean) => {
+      const outcome = await finish(confirmZeroChecked);
+      if (!outcome.ok) {
+        showSnack(outcome.message);
+        return;
+      }
+
+      AccessibilityInfo.announceForAccessibility(es.finish.savedAnnouncement);
+
+      // El historial queda como raíz del stack y el detalle se apila encima:
+      // "Atrás" vuelve a Historial, nunca al modo compra ya cerrado.
+      router.dismissTo('/historial');
+      router.push({ pathname: '/compra/[id]', params: { id: outcome.purchase.id } });
+    },
+    [finish, showSnack],
+  );
+
   const openFinish = useCallback(() => {
-    // Un ref evita apilar dos modales con un doble toque antes de que la
-    // navegación cambie el foco; se libera al volver al modo compra.
-    if (!listId || openingFinishRef.current) {
+    if (!detail || finishing) {
       return;
     }
-    openingFinishRef.current = true;
-    // El modal se apila sobre el modo compra para que cancelar el cierre
-    // devuelva exactamente al punto de compra, con los checks intactos.
-    router.push({ pathname: '/lista/[id]/finalizar', params: { id: listId } });
-  }, [listId]);
+
+    const checkedCount = detail.items.filter((item) => item.isChecked).length;
+    const confirmation = buildFinishConfirmation(checkedCount, detail.items.length);
+
+    Alert.alert(confirmation.title, confirmation.message, [
+      { text: es.common.cancel, style: 'cancel' },
+      {
+        text: confirmation.confirmLabel,
+        style: 'destructive',
+        onPress: () => {
+          void completeFinish(confirmation.confirmZeroChecked);
+        },
+      },
+    ]);
+  }, [completeFinish, detail, finishing]);
 
   if (status === 'loading' || status === 'not_shopping') {
     return (
@@ -213,10 +237,7 @@ export default function ShoppingScreen() {
         }}
       />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAwareView style={styles.flex}>
         <FlatList
           data={detail.items}
           keyExtractor={(item) => item.id}
@@ -268,11 +289,15 @@ export default function ShoppingScreen() {
         />
 
         <View style={styles.primaryAction}>
-          <PrimaryButton label={es.finish.submit} onPress={openFinish} />
+          <PrimaryButton
+            label={finishing ? es.finish.submitting : es.finish.submit}
+            onPress={openFinish}
+            disabled={finishing}
+          />
         </View>
 
         <AddItemBar onAdd={addItem} bottomInset={insets.bottom} />
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
 
       {snack ? (
         <Snackbar

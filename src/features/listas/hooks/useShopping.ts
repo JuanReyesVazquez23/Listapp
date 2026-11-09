@@ -4,14 +4,19 @@ import { useCallback, useRef, useState } from 'react';
 import type { ListDetail } from '@/useCases/lists';
 import { getListDetail } from '@/useCases/lists';
 import { addItem as addShoppingItem } from '@/useCases/items';
-import { cancelShopping, setItemChecked } from '@/useCases/shopping';
+import { cancelShopping, finishPurchase, setItemChecked } from '@/useCases/shopping';
 import { appDeps } from '@/useCases/deps';
 import { computeProgress, type Progress } from '@/domain/progress';
+import type { ShoppingList } from '@/domain/list';
 import { isAppError } from '@/lib/errors';
 import { toUserMessage } from '@/lib/errorMessages';
 import { es } from '@/strings/es';
 
 export type ShoppingStatus = 'loading' | 'ready' | 'not_found' | 'not_shopping' | 'error';
+
+export type FinishShoppingOutcome =
+  | { ok: true; purchase: ShoppingList }
+  | { ok: false; message: string };
 
 interface ShoppingState {
   status: ShoppingStatus;
@@ -19,9 +24,11 @@ interface ShoppingState {
   progress: Progress;
   error: string | null;
   pendingItemIds: ReadonlySet<string>;
+  finishing: boolean;
   toggleItem(itemId: string): Promise<void>;
   addItem(name: string): Promise<void>;
   cancel(): Promise<void>;
+  finish(confirmZeroChecked: boolean): Promise<FinishShoppingOutcome>;
   reload(): Promise<void>;
 }
 
@@ -40,9 +47,11 @@ export function useShopping(listId: string | undefined): ShoppingState {
   const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS);
   const [error, setError] = useState<string | null>(null);
   const [pendingItemIds, setPendingItemIds] = useState<ReadonlySet<string>>(new Set());
+  const [finishing, setFinishing] = useState(false);
 
   const detailRef = useRef<ListDetail | null>(null);
   const pendingRef = useRef<Set<string>>(new Set());
+  const finishingRef = useRef(false);
 
   const applyDetail = useCallback((next: ListDetail) => {
     detailRef.current = next;
@@ -139,15 +148,48 @@ export function useShopping(listId: string | undefined): ShoppingState {
     await cancelShopping(appDeps, currentDetail.list.id);
   }, []);
 
+  /**
+   * Cierra la compra sin preguntar por el supermercado.
+   *
+   * Un ref bloquea el doble toque antes de que React repinte el botón
+   * deshabilitado; la transacción sigue siendo idempotente por sí misma.
+   */
+  const finish = useCallback(
+    async (confirmZeroChecked: boolean): Promise<FinishShoppingOutcome> => {
+      const currentDetail = detailRef.current;
+      if (!currentDetail || finishingRef.current) {
+        return { ok: false, message: es.errors.generic };
+      }
+
+      finishingRef.current = true;
+      setFinishing(true);
+      try {
+        const purchase = await finishPurchase(appDeps, {
+          listId: currentDetail.list.id,
+          confirmZeroChecked,
+        });
+        return { ok: true, purchase };
+      } catch (finishError) {
+        return { ok: false, message: toUserMessage(finishError) };
+      } finally {
+        finishingRef.current = false;
+        setFinishing(false);
+      }
+    },
+    [],
+  );
+
   return {
     status,
     detail,
     progress,
     error,
     pendingItemIds,
+    finishing,
     toggleItem,
     addItem,
     cancel,
+    finish,
     reload: load,
   };
 }

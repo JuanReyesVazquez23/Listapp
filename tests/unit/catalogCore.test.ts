@@ -1,6 +1,7 @@
 import {
   normalizeQuery,
   readTotalFromResources,
+  singularQueryVariants,
   toCatalogResults,
 } from '../../api/_catalogCore';
 
@@ -113,6 +114,47 @@ describe('normalizeQuery', () => {
       reason: 'invalid_chars',
     });
   });
+
+  it('pliega tildes y diéresis sin cambiar el significado', () => {
+    expect(normalizeQuery('Plátanos')).toEqual({
+      ok: true,
+      query: 'platanos',
+      terms: ['platanos'],
+    });
+    expect(normalizeQuery('Azúcar')).toEqual({
+      ok: true,
+      query: 'azucar',
+      terms: ['azucar'],
+    });
+    expect(normalizeQuery('Piña')).toEqual({
+      ok: true,
+      query: 'pina',
+      terms: ['pina'],
+    });
+  });
+});
+
+describe('singularQueryVariants', () => {
+  it('genera el singular de un plural que VTEX no reconoce', () => {
+    expect(singularQueryVariants('platanos')).toEqual(['platano']);
+    expect(singularQueryVariants('huevos')).toEqual(['huevo']);
+  });
+
+  it('prueba tanto quitar la `s` como deshacer `-es`', () => {
+    expect(singularQueryVariants('panes')).toEqual(['pane', 'pan']);
+    expect(singularQueryVariants('arroces')).toEqual(['arroce', 'arroz']);
+  });
+
+  it('no genera variantes para palabras que no acaban en `s`', () => {
+    expect(singularQueryVariants('arroz')).toEqual([]);
+    expect(singularQueryVariants('pan de molde')).toEqual([]);
+  });
+
+  it('singulariza cada palabra de una consulta compuesta', () => {
+    expect(singularQueryVariants('platanos maduros')).toEqual([
+      'platano maduro',
+    ]);
+  });
 });
 
 describe('readTotalFromResources', () => {
@@ -200,6 +242,33 @@ describe('toCatalogResults', () => {
       ['sardinas'],
     );
     expect(sardines.map((entry) => entry.productId)).toEqual(['3']);
+
+    const plantains = toCatalogResults(
+      [
+        product('4', 'Plátano Hartón', {
+          categories: ['/Supermercado/Frutas y Verduras/Plátanos/'],
+        }),
+        product('5', 'Platanos Maduros', {
+          categories: ['/Supermercado/Frutas y Verduras/Plátanos/'],
+        }),
+      ],
+      ['platano'],
+    );
+    expect(plantains.map((entry) => entry.productId).sort()).toEqual(['4', '5']);
+  });
+
+  it('un término con tilde encuentra nombres sin tilde y al revés', () => {
+    const withAccent = toCatalogResults(
+      [product('1', 'Platano Harton', { categories: ['/Frutas/Platanos/'] })],
+      ['plátano'],
+    );
+    expect(withAccent.map((entry) => entry.productId)).toEqual(['1']);
+
+    const withoutAccent = toCatalogResults(
+      [product('2', 'Plátano Hartón', { categories: ['/Frutas/Plátanos/'] })],
+      ['platano'],
+    );
+    expect(withoutAccent.map((entry) => entry.productId)).toEqual(['2']);
   });
 
   it('prioriza la categoría de la familia y descarta otros usos del término', () => {

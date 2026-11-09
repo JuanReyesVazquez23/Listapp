@@ -80,9 +80,9 @@ CREATE TABLE ${tableName} (
  * En la migración el hijo se llama `items_v2` y apunta a `lists_v2`; tras el
  * renombrado del padre, SQLite reescribe la referencia a `lists`.
  */
-function itemsTableSql(
-  tableName: 'items' | 'items_v2',
-  parentTable: 'lists' | 'lists_v2',
+export function itemsTableSql(
+  tableName: 'items' | 'items_v2' | 'items_v3',
+  parentTable: 'lists' | 'lists_v2' | 'lists_v3',
 ): string {
   return `
 CREATE TABLE ${tableName} (
@@ -164,7 +164,7 @@ CREATE TABLE ${tableName} (
 );`;
 }
 
-const INDEXES_SQL = `
+export const INDEXES_SQL = `
 CREATE INDEX idx_lists_active
   ON lists(status, updated_at_utc DESC)
   WHERE status IN ('draft', 'shopping');

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import {
   StyleSheet,
   TextInput,
   View,
   type StyleProp,
+  type TextInputInstance,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
@@ -17,15 +18,14 @@ interface TextFieldProps extends TextInputProps {
   containerStyle?: StyleProp<ViewStyle>;
 }
 
-export function TextField({
-  label,
-  error,
-  containerStyle,
-  style,
-  onFocus,
-  onBlur,
-  ...rest
-}: TextFieldProps) {
+/**
+ * `forwardRef` apunta al `TextInput` real. El detalle de una línea lo usa para
+ * medir el campo enfocado y desplazarlo por encima del teclado.
+ */
+export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function TextField(
+  { label, error, containerStyle, style, onFocus, onBlur, ...rest },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -34,6 +34,7 @@ export function TextField({
         {label}
       </AppText>
       <TextInput
+        ref={ref}
         accessibilityLabel={label}
         placeholderTextColor={colors.textMuted}
         selectionColor={colors.primary}
@@ -60,7 +61,7 @@ export function TextField({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   label: {

@@ -14,7 +14,6 @@ import {
 } from '@/domain/lifecycle';
 import { isShoppingMode, type ShoppingList, type ShoppingMode } from '@/domain/list';
 import { progressFromCounts, type Progress } from '@/domain/progress';
-import { validateSupermarketName } from '@/domain/validation';
 import {
   checkItemRow,
   clearItemChecks,
@@ -35,7 +34,7 @@ import {
   touchList,
 } from '@/infrastructure/repositories/listsRepository';
 import { AppError } from '@/lib/errors';
-import { guardError, supermarketNameError } from '@/useCases/guards';
+import { guardError } from '@/useCases/guards';
 import type { UseCaseDeps } from '@/useCases/types';
 
 export interface CheckItemResult {
@@ -45,7 +44,6 @@ export interface CheckItemResult {
 
 export interface FinishPurchaseInput {
   listId: string;
-  supermarketName: string;
   confirmZeroChecked: boolean;
 }
 
@@ -345,11 +343,6 @@ export async function finishPurchase(
       throw guardError(failure);
     }
 
-    const validation = validateSupermarketName(input.supermarketName);
-    if (!validation.ok) {
-      throw supermarketNameError(validation.reason);
-    }
-
     const now = deps.clock.now();
     const nowUtc = now.getTime();
     const localDate = toLocalDateString(now);
@@ -365,7 +358,7 @@ export async function finishPurchase(
       nowUtc,
       localDate,
       localTime,
-      supermarketName: validation.value,
+      supermarketName: null,
       totalCents,
     });
 
@@ -391,7 +384,7 @@ export async function finishPurchase(
       completedAtUtc: nowUtc,
       completedLocalDate: localDate,
       completedLocalTime: localTime,
-      supermarketName: validation.value,
+      supermarketName: null,
       totalCents,
     };
   });

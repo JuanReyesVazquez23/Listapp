@@ -19,7 +19,7 @@ export interface FinishShoppingInput {
   nowUtc: number;
   localDate: string;
   localTime: string;
-  supermarketName: string;
+  supermarketName: string | null;
   totalCents: number | null;
 }
 
@@ -202,44 +202,6 @@ export async function findCompletedPurchaseSummaries(
       ORDER BY l.completed_at_utc DESC`,
   );
   return rows.map(mapListSummaryRow);
-}
-
-/**
- * Nombres de las últimas compras, sin repetir el mismo supermercado.
- *
- * La comparación ignora mayúsculas y minúsculas, incluidas las vocales
- * acentuadas, y se hace en JavaScript con `toLowerCase()` y no en SQL: el
- * `lower()` de SQLite sin ICU solo pliega ASCII, así que `SÁNCHEZ` y `Sánchez`
- * acabarían como dos sugerencias distintas. No se eliminan los diacríticos:
- * «Sanchez» y «Sánchez» son nombres distintos.
- *
- * Se conserva la grafía de la compra más reciente de cada grupo y se recorta
- * al límite después de deduplicar. Se leen todas las compras completadas; el
- * volumen del MVP es bajo y no justifica otra consulta.
- */
-export async function findRecentSupermarketNames(
-  reader: SqlReader,
-  limit: number,
-): Promise<string[]> {
-  const rows = await reader.all<{ supermarket_name: string }>(
-    `SELECT supermarket_name
-       FROM lists
-      WHERE status = 'completed' AND supermarket_name IS NOT NULL
-      ORDER BY completed_at_utc DESC`,
-  );
-
-  const seen = new Set<string>();
-  const unique: string[] = [];
-  for (const row of rows) {
-    const key = row.supermarket_name.toLowerCase();
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    unique.push(row.supermarket_name);
-  }
-
-  return unique.slice(0, limit);
 }
 
 /**

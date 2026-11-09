@@ -14,12 +14,6 @@ export function itemNameErrorMessage(reason: ValidationFailure): string {
     : es.validation.itemNameTooLong;
 }
 
-export function supermarketNameErrorMessage(reason: ValidationFailure): string {
-  return reason === 'required'
-    ? es.validation.supermarketRequired
-    : es.validation.supermarketTooLong;
-}
-
 /**
  * Traduce el fallo del detalle de la línea al mensaje que se pinta bajo su
  * campo. La marca y la unidad tienen un único fallo posible; cantidad y precio

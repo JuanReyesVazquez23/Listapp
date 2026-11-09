@@ -8,14 +8,12 @@ import {
   View,
 } from 'react-native';
 
-import { DatabaseDiagnosticsPanel } from '@/components/dev/DatabaseDiagnosticsPanel';
 import { ListCard } from '@/components/listas/ListCard';
 import { AppText } from '@/components/ui/AppText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { toLocalDateString, formatShortDate } from '@/domain/dates';
 import { useLists } from '@/features/listas/hooks/useLists';
-import { SHOW_DB_DIAGNOSTICS } from '@/lib/flags';
 import { es } from '@/strings/es';
 import { colors, radius, spacing } from '@/theme/tokens';
 
@@ -104,8 +102,6 @@ export default function ListsScreen() {
               onAction={() => router.push('/lista/nueva')}
             />
           )}
-
-          {SHOW_DB_DIAGNOSTICS ? <DatabaseDiagnosticsPanel /> : null}
         </ScrollView>
       )}
 

@@ -4,8 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   View,
 } from 'react-native';
@@ -13,6 +11,7 @@ import {
 import { ItemDetailForm } from '@/components/compras/ItemDetailForm';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { KeyboardAwareView } from '@/components/ui/KeyboardAwareView';
 import { shoppingGuard } from '@/domain/navigation';
 import { useItemDetail } from '@/features/listas/hooks/useItemDetail';
 import { applyGuard } from '@/features/navigation/applyGuard';
@@ -182,10 +181,7 @@ export default function ItemDetailScreen() {
   return (
     <View style={styles.flex}>
       <Stack.Screen options={headerOptions} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAwareView style={styles.flex}>
         <ItemDetailForm
           item={context.item}
           catalog={catalog}
@@ -199,7 +195,7 @@ export default function ItemDetailScreen() {
           onRemoveData={confirmRemoveData}
           onRemoveFromPurchase={confirmRemoveFromPurchase}
         />
-      </KeyboardAvoidingView>
+      </KeyboardAwareView>
     </View>
   );
 }

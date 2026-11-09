@@ -14,13 +14,16 @@ interface PurchaseRowProps {
   onPress(listId: string): void;
 }
 
-/** Fila del historial: fecha, supermercado y progreso en una sola línea táctil. */
+/**
+ * Fila del historial: fecha, nombre de la compra (o supermercado, si la compra
+ * antigua lo tiene) y progreso en una sola línea táctil.
+ */
 export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
   const dateLabel = formatHistoryRow(
     purchase.completedLocalDate ?? '',
     purchase.completedLocalTime ?? '',
   );
-  const supermarket = purchase.supermarketName ?? '';
+  const subtitle = purchase.supermarketName ?? purchase.name;
   const progressLabel = es.purchase.progress(purchase.checkedCount, purchase.itemCount);
   const catalogMode = purchase.shoppingMode === 'catalog';
   const totalLabel = !catalogMode
@@ -34,7 +37,7 @@ export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
       accessibilityRole="button"
       accessibilityLabel={es.purchase.rowLabel(
         dateLabel,
-        supermarket,
+        subtitle,
         progressLabel,
         totalLabel,
       )}
@@ -46,7 +49,7 @@ export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
           {dateLabel}
         </AppText>
         <AppText variant="bodyStrong" style={styles.supermarket} numberOfLines={1}>
-          {supermarket}
+          {subtitle}
         </AppText>
         <AppText variant="caption" style={styles.progress}>
           {progressLabel}

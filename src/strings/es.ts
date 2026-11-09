@@ -186,17 +186,19 @@ export const es = {
     catalogChip: 'Con La Sirena',
   },
   finish: {
-    title: 'Finalizar compra',
     summary: (checked: number, unchecked: number) =>
       `${checked === 1 ? '1 comprado' : `${checked} comprados`} · ${unchecked} sin comprar`,
-    supermarketLabel: 'Supermercado',
-    supermarketPlaceholder: '¿Dónde has comprado?',
-    suggestionsLabel: 'Supermercados recientes',
-    suggestionLabel: (name: string) => `Usar ${name}`,
-    uncheckedNotice: 'Se guardarán como no comprados.',
-    zeroCheckedNotice: 'No has marcado ningún artículo.',
-    zeroCheckedConfirm: 'Se guardará la compra con 0 comprados. ¿Continuar?',
-    zeroCheckedContinue: 'Finalizar con 0 comprados',
+    confirmTitle: 'Finalizar compra',
+    confirmBody: (unchecked: number) => {
+      if (unchecked === 0) {
+        return '¿Seguro que quieres terminar la compra?';
+      }
+      return unchecked === 1
+        ? '¿Seguro que quieres terminar la compra? Se guardará 1 artículo sin comprar.'
+        : `¿Seguro que quieres terminar la compra? Se guardarán ${unchecked} artículos sin comprar.`;
+    },
+    confirmZeroBody:
+      'No has marcado ningún artículo. Se guardará la compra con 0 comprados. ¿Quieres continuar?',
     submit: 'Finalizar compra',
     submitting: 'Guardando…',
     savedAnnouncement: 'Compra guardada',
@@ -207,8 +209,8 @@ export const es = {
     checkedSection: 'Comprados',
     uncheckedSection: 'Sin comprar',
     progress: (checked: number, total: number) => `${checked} de ${total} comprados`,
-    rowLabel: (date: string, supermarket: string, progress: string, total?: string) =>
-      `${date}, ${supermarket}, ${progress}${total ? `, ${total}` : ''}`,
+    rowLabel: (date: string, name: string, progress: string, total?: string) =>
+      `${date}, ${name}, ${progress}${total ? `, ${total}` : ''}`,
     itemLabel: (name: string, checked: boolean) =>
       `${name}, ${checked ? 'comprado' : 'no comprado'}`,
     itemDetailLabel: (name: string, checked: boolean, detail: string) =>
@@ -219,7 +221,7 @@ export const es = {
   },
   history: {
     emptyTitle: 'Todavía no has finalizado ninguna compra',
-    emptyBody: 'Cuando termines una compra, aparecerá aquí con la fecha y el supermercado.',
+    emptyBody: 'Cuando termines una compra, aparecerá aquí con la fecha y el progreso.',
     emptyAction: 'Ir a Listas',
   },
   notFound: {
@@ -233,8 +235,6 @@ export const es = {
     listNameTooLong: 'El nombre no puede superar los 80 caracteres.',
     itemNameRequired: 'Escribe un nombre para el artículo.',
     itemNameTooLong: 'El nombre no puede superar los 100 caracteres.',
-    supermarketRequired: 'Escribe el supermercado.',
-    supermarketTooLong: 'El supermercado no puede superar los 80 caracteres.',
     itemBrandTooLong: 'La marca no puede superar los 60 caracteres.',
     itemQuantityRequired: 'Escribe la cantidad.',
     itemQuantityInvalid: 'Cantidad no válida. Usa hasta tres decimales.',
@@ -269,20 +269,5 @@ export const es = {
     unknownSchemaBody: 'La base de datos no tiene un esquema reconocible. Reinstala el APK.',
     brokenTitle: 'Base de datos bloqueada',
     brokenBody: 'Cierra la app desde el selector de aplicaciones y vuelve a abrirla.',
-    technicalCode: 'Código',
-  },
-  diagnostics: {
-    title: 'Diagnóstico de base de datos',
-    sqlite: 'SQLite',
-    schema: 'Esquema',
-    journal: 'WAL',
-    foreignKeys: 'foreign_keys',
-    write: 'Escritura',
-    rollback: 'Rollback',
-    yes: 'Sí',
-    no: 'No',
-    running: 'Comprobando…',
-    failed: 'Error',
-    version: (version: number) => `v${version}`,
   },
 } as const;

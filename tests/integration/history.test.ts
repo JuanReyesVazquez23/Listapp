@@ -2,7 +2,6 @@ import { toLocalDateString, monthKey } from '@/domain/dates';
 import {
   deleteCompletedListRow,
   findCompletedPurchaseSummaries,
-  findRecentSupermarketNames,
 } from '@/infrastructure/repositories/listsRepository';
 import { addItem } from '@/useCases/items';
 import { createList, getListDetail } from '@/useCases/lists';
@@ -20,15 +19,14 @@ describe('consultas del historial', () => {
     await ctx.cleanup();
   });
 
-  async function completePurchase(supermarketName: string, at: string): Promise<string> {
+  async function completePurchase(label: string, at: string): Promise<string> {
     ctx.setNow(new Date(at));
-    const list = await createList(ctx.deps, { name: `Compra ${supermarketName}` });
+    const list = await createList(ctx.deps, { name: `Compra ${label}` });
     const item = await addItem(ctx.deps, list.id, 'Leche');
     await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, item.id, true);
     await finishPurchase(ctx.deps, {
       listId: list.id,
-      supermarketName,
       confirmZeroChecked: false,
     });
     return list.id;
@@ -98,55 +96,6 @@ describe('consultas del historial', () => {
 
     const months = history.map((row) => monthKey(row.completedLocalDate ?? ''));
     expect(months).toEqual([...months].sort().reverse());
-  });
-
-  it('sugiere supermercados recientes sin duplicar mayúsculas', async () => {
-    await completePurchase('Mercadona', '2026-09-01T10:00:00');
-    await completePurchase('Lidl', '2026-10-01T10:00:00');
-    await completePurchase('MERCADONA', '2026-10-20T10:00:00');
-
-    const names = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 8),
-    );
-    expect(names).toEqual(['MERCADONA', 'Lidl']);
-
-    const limited = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 1),
-    );
-    expect(limited).toEqual(['MERCADONA']);
-  });
-
-  it('aplica el límite después de deduplicar', async () => {
-    await completePurchase('B', '2026-10-01T10:00:00');
-    await completePurchase('A', '2026-10-02T10:00:00');
-    await completePurchase('A', '2026-10-03T10:00:00');
-
-    const names = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 2),
-    );
-    expect(names).toEqual(['A', 'B']);
-
-    const none = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 0),
-    );
-    expect(none).toEqual([]);
-  });
-
-  it('no distingue mayúsculas, incluidas las acentuadas, y conserva la grafía más reciente', async () => {
-    await completePurchase('SÁNCHEZ', '2026-10-01T10:00:00');
-    await completePurchase('Sánchez', '2026-10-02T10:00:00');
-
-    const names = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 8),
-    );
-    expect(names).toEqual(['Sánchez']);
-  });
-
-  it('no sugiere supermercados si no hay compras', async () => {
-    const names = await ctx.manager.read((reader) =>
-      findRecentSupermarketNames(reader, 8),
-    );
-    expect(names).toEqual([]);
   });
 
   it('elimina la compra y sus artículos en cascada', async () => {

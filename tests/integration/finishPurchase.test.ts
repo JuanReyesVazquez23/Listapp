@@ -35,7 +35,7 @@ describe('finalizar compra', () => {
     return { listId: list.id, itemIds };
   }
 
-  it('persiste estado, fecha local, hora y supermercado recortado', async () => {
+  it('persiste estado, fecha local y hora', async () => {
     const { listId, itemIds } = await startPurchaseWithItems(['Leche', 'Pan']);
     await setItemChecked(ctx.deps, itemIds[0], true);
     ctx.setNow(new Date('2026-10-28T18:42:00'));
@@ -43,7 +43,6 @@ describe('finalizar compra', () => {
 
     const completed = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: '  Mercadona  ',
       confirmZeroChecked: false,
     });
 
@@ -54,7 +53,7 @@ describe('finalizar compra', () => {
       completedAtUtc: expectedNow,
       completedLocalDate: '2026-10-28',
       completedLocalTime: '18:42',
-      supermarketName: 'Mercadona',
+      supermarketName: null,
     });
 
     const detail = await getListDetail(ctx.deps, listId);
@@ -64,7 +63,7 @@ describe('finalizar compra', () => {
       completedAtUtc: expectedNow,
       completedLocalDate: '2026-10-28',
       completedLocalTime: '18:42',
-      supermarketName: 'Mercadona',
+      supermarketName: null,
     });
   });
 
@@ -74,7 +73,6 @@ describe('finalizar compra', () => {
 
     await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'Mercadona',
       confirmZeroChecked: false,
     });
 
@@ -87,7 +85,7 @@ describe('finalizar compra', () => {
     expect(history[0]).toMatchObject({
       id: listId,
       status: 'completed',
-      supermarketName: 'Mercadona',
+      supermarketName: null,
       itemCount: 2,
       checkedCount: 1,
     });
@@ -99,7 +97,6 @@ describe('finalizar compra', () => {
 
     await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'Mercadona',
       confirmZeroChecked: false,
     });
 
@@ -123,7 +120,6 @@ describe('finalizar compra', () => {
     await expect(
       finishPurchase(ctx.deps, {
         listId: 'no-existe',
-        supermarketName: 'Mercadona',
         confirmZeroChecked: false,
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
@@ -136,7 +132,6 @@ describe('finalizar compra', () => {
     await expect(
       finishPurchase(ctx.deps, {
         listId: list.id,
-        supermarketName: 'Mercadona',
         confirmZeroChecked: false,
       }),
     ).rejects.toMatchObject({ code: 'INVALID_STATE' });
@@ -157,7 +152,6 @@ describe('finalizar compra', () => {
     await expect(
       finishPurchase(ctx.deps, {
         listId: list.id,
-        supermarketName: 'Mercadona',
         confirmZeroChecked: true,
       }),
     ).rejects.toMatchObject({ code: 'EMPTY_LIST' });
@@ -173,7 +167,6 @@ describe('finalizar compra', () => {
     await expect(
       finishPurchase(ctx.deps, {
         listId,
-        supermarketName: 'Mercadona',
         confirmZeroChecked: false,
       }),
     ).rejects.toMatchObject({ code: 'NO_CHECKED' });
@@ -184,52 +177,12 @@ describe('finalizar compra', () => {
 
     const completed = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'Mercadona',
       confirmZeroChecked: true,
     });
     expect(completed.status).toBe('completed');
 
     const history = await ctx.manager.read(findCompletedPurchaseSummaries);
     expect(history[0].checkedCount).toBe(0);
-  });
-
-  it('prioriza NO_CHECKED sobre la validación del supermercado', async () => {
-    const { listId } = await startPurchaseWithItems(['Leche', 'Pan']);
-
-    await expect(
-      finishPurchase(ctx.deps, {
-        listId,
-        supermarketName: '',
-        confirmZeroChecked: false,
-      }),
-    ).rejects.toMatchObject({ code: 'NO_CHECKED' });
-
-    const detail = await getListDetail(ctx.deps, listId);
-    expect(detail.list.status).toBe('shopping');
-    expect(detail.list.supermarketName).toBeNull();
-  });
-
-  it('rechaza supermercados vacíos, solo espacios o de 81 caracteres sin escribir', async () => {
-    const { listId, itemIds } = await startPurchaseWithItems(['Leche']);
-    await setItemChecked(ctx.deps, itemIds[0], true);
-    const before = await getListDetail(ctx.deps, listId);
-
-    for (const supermarketName of ['', '    ', 'a'.repeat(81)]) {
-      await expect(
-        finishPurchase(ctx.deps, {
-          listId,
-          supermarketName,
-          confirmZeroChecked: false,
-        }),
-      ).rejects.toMatchObject({
-        code: 'VALIDATION',
-        details: { field: 'supermarketName' },
-      });
-    }
-
-    const after = await getListDetail(ctx.deps, listId);
-    expect(after.list).toEqual(before.list);
-    expect(after.list.status).toBe('shopping');
   });
 
   it('finalizar dos veces devuelve la misma compra sin escribir', async () => {
@@ -240,7 +193,6 @@ describe('finalizar compra', () => {
 
     const first = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'Mercadona',
       confirmZeroChecked: false,
     });
     expect(first.completedAtUtc).toBe(firstNow);
@@ -248,7 +200,6 @@ describe('finalizar compra', () => {
     ctx.setNow(new Date('2026-10-30T09:00:00'));
     const second = await finishPurchase(ctx.deps, {
       listId,
-      supermarketName: 'Lidl',
       confirmZeroChecked: true,
     });
 
@@ -257,12 +208,12 @@ describe('finalizar compra', () => {
       status: 'completed',
       completedAtUtc: firstNow,
       updatedAtUtc: firstNow,
-      supermarketName: 'Mercadona',
+      supermarketName: null,
     });
 
     const detail = await getListDetail(ctx.deps, listId);
     expect(detail.list.updatedAtUtc).toBe(firstNow);
-    expect(detail.list.supermarketName).toBe('Mercadona');
+    expect(detail.list.supermarketName).toBeNull();
   });
 
   it('revierte la finalización y deja la lista en compra si falla el COMMIT', async () => {
@@ -283,7 +234,6 @@ describe('finalizar compra', () => {
       await expect(
         finishPurchase(deps, {
           listId: list.id,
-          supermarketName: 'Mercadona',
           confirmZeroChecked: false,
         }),
       ).rejects.toMatchObject({ code: 'DB_WRITE_FAILED' });

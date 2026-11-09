@@ -2,7 +2,6 @@ import {
   deletePurchase,
   getHistory,
   getPurchaseDetail,
-  getSupermarketSuggestions,
 } from '@/useCases/history';
 import { addItem } from '@/useCases/items';
 import { createList, getListDetail } from '@/useCases/lists';
@@ -20,16 +19,15 @@ describe('casos de uso del historial', () => {
     await ctx.cleanup();
   });
 
-  async function completePurchase(supermarketName: string, at: string): Promise<string> {
+  async function completePurchase(label: string, at: string): Promise<string> {
     ctx.setNow(new Date(at));
-    const list = await createList(ctx.deps, { name: `Compra ${supermarketName}` });
+    const list = await createList(ctx.deps, { name: `Compra ${label}` });
     const milk = await addItem(ctx.deps, list.id, 'Leche');
     await addItem(ctx.deps, list.id, 'Pan');
     await startShopping(ctx.deps, list.id, 'normal');
     await setItemChecked(ctx.deps, milk.id, true);
     await finishPurchase(ctx.deps, {
       listId: list.id,
-      supermarketName,
       confirmZeroChecked: false,
     });
     return list.id;
@@ -43,7 +41,7 @@ describe('casos de uso del historial', () => {
 
     expect(history.map((row) => row.id)).toEqual([newer, older]);
     expect(history[0]).toMatchObject({
-      supermarketName: 'Lidl',
+      supermarketName: null,
       completedLocalDate: '2026-10-27',
       completedLocalTime: '18:42',
       itemCount: 2,
@@ -124,18 +122,5 @@ describe('casos de uso del historial', () => {
     const detail = await getListDetail(ctx.deps, list.id);
     expect(detail.list.status).toBe('shopping');
     expect(detail.items).toHaveLength(1);
-  });
-
-  it('sugiere como máximo 8 supermercados sin repetir grafías', async () => {
-    for (let index = 1; index <= 9; index += 1) {
-      await completePurchase(`Tienda ${index}`, `2026-10-0${index}T10:00:00`);
-    }
-    await completePurchase('TIENDA 9', '2026-10-10T10:00:00');
-
-    const names = await getSupermarketSuggestions(ctx.deps, 8);
-
-    expect(names).toHaveLength(8);
-    expect(names[0]).toBe('TIENDA 9');
-    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(8);
   });
 });

@@ -26,14 +26,6 @@ export function shoppingGuard(status: ListStatus): GuardTarget | null {
   return null;
 }
 
-/**
- * El modal de cierre solo acepta `shopping`; comparte reglas con el modo
- * compra para que ambas rutas no se contradigan.
- */
-export function finishGuard(status: ListStatus): GuardTarget | null {
-  return shoppingGuard(status);
-}
-
 /** El detalle histórico solo acepta `completed`. */
 export function purchaseGuard(status: ListStatus): GuardTarget | null {
   if (status === 'draft') {

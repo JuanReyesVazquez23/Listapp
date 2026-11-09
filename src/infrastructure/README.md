@@ -13,7 +13,6 @@ Esta carpeta contiene **todo el código que habla con el almacenamiento local**.
 | `expoSqliteAdapter.ts` | Implementación de producción con `expo-sqlite`. |
 | `migrations/` | Migraciones forward-only y versión de esquema. |
 | `repositories/` | Consultas SQL y mapeo de filas a tipos de dominio. |
-| `diagnostics.ts` | Comprobación de humo de PRAGMAs, escritura y rollback. |
 
 ## Qué no debe entrar aquí
 
