@@ -6,7 +6,7 @@
 2. **Una compra completada es una lista con `status = 'completed'`.** No hay tabla `purchases` duplicada.
 3. **Inmutabilidad:** una compra completada no se edita; solo se elimina.
 4. **Historial con fecha y hora local:** se guardan componentes locales (`YYYY-MM-DD` y `HH:mm`) además de UTC para ordenar.
-5. **Supermercado como texto libre**, no como catálogo.
+5. **Supermercado opcional:** las compras nuevas lo guardan como `NULL`; las antiguas conservan el texto libre.
 6. **Una sola compra activa** a la vez, garantizada por un índice único parcial.
 7. **Orden determinista** de artículos con `sort_order`, no por timestamp ni UUID.
 8. **Migraciones forward-only** con `PRAGMA user_version`.
@@ -57,15 +57,15 @@ erDiagram
 | `completed_at_utc` | `INTEGER` | Sí | Epoch ms UTC; solo si `completed`. |
 | `completed_local_date` | `TEXT` | Sí | `YYYY-MM-DD` local del momento de finalizar; solo si `completed`. |
 | `completed_local_time` | `TEXT` | Sí | `HH:mm` local; solo si `completed`. |
-| `supermarket_name` | `TEXT` | Sí | `trim` entre 1 y 80; solo si `completed`. |
+| `supermarket_name` | `TEXT` | Sí | Texto libre de 1–80 tras `trim` si existe. Opcional en `completed`: las compras nuevas guardan `NULL` y las antiguas conservan su valor. |
 | `shopping_mode` | `TEXT` | Sí | `normal` o `catalog`; obligatorio en `shopping` y `completed`, nulo en `draft`. |
 | `total_cents` | `INTEGER` | Sí | Total en céntimos; solo en `completed` con modo `catalog`. Nulo si ninguna línea tenía precio. |
 
 ### 3.1 Invariante de cierre
 
 - Si `status = 'completed'`:
-  - `completed_at_utc`, `completed_local_date`, `completed_local_time` y `supermarket_name` son no nulos;
-  - el supermercado tiene entre 1 y 80 caracteres tras `trim`.
+  - `completed_at_utc`, `completed_local_date` y `completed_local_time` son no nulos;
+  - `supermarket_name` puede ser nulo; si tiene valor, entre 1 y 80 caracteres tras `trim`.
 - Si `status <> 'completed'`:
   - los cuatro campos de cierre son nulos.
 
@@ -183,7 +183,7 @@ stateDiagram-v2
 | `shopping` | Editar o quitar detalle | `shopping` | Lista en `shopping` y modo `catalog`; artículo marcado | Actualiza o borra las columnas de línea sin cambiar el check. |
 | `shopping` | Añadir/editar/borrar artículo | `shopping` | Nombre válido; no completada; no borrar el último | Inserta/actualiza/borra; actualiza `updated_at` de la lista. |
 | `shopping` | Cancelar compra | `draft` | Confirmación | Desmarca todos, limpia detalle, modo y total; actualiza `updated_at`. |
-| `shopping` | Finalizar compra | `completed` | Supermercado válido; 0 marcados requiere confirmación; transacción | Escribe estado, cierre y total de catálogo; `updated_at`. |
+| `shopping` | Finalizar compra | `completed` | 0 marcados requiere confirmación; transacción | Escribe estado, cierre, `supermarket_name = NULL` y total de catálogo; `updated_at`. |
 | `completed` | Editar/renombrar/marcar/volver a borrador | — | — | Prohibido; `LIST_COMPLETED`. |
 | `completed` | Eliminar compra | — | Confirmación | Borra la lista; cascada de artículos. |
 | `draft`/`shopping` | Eliminar lista | — | Confirmación | Borra la lista; cascada de artículos. |
@@ -204,7 +204,7 @@ Todas las mutaciones de artículos se validan **dentro de la misma transacción*
 | Renombrar lista | La lista debe estar en `draft` o `shopping`. |
 | Iniciar compra | La lista debe estar en `draft`, tener ≥1 artículo y no existir otra `shopping`. |
 | Cancelar compra | La lista debe estar en `shopping`. |
-| Finalizar | La lista debe estar en `shopping`; supermercado válido; 0 marcados requiere confirmación. |
+| Finalizar | La lista debe estar en `shopping`; 0 marcados requiere confirmación. |
 
 La implementación usa una condición en la propia sentencia (`EXISTS` sobre el estado de la lista) y comprueba el número de filas afectadas. Si es 0, se relee dentro de la transacción para distinguir “no existe”, “estado incompatible” o “lista completada”.
 
@@ -232,12 +232,11 @@ La UI envía el estado deseado (`true`/`false`), no “alternar”. Así, un rei
 5. Contar artículos totales y marcados.
 6. Si total = 0 → `EMPTY_LIST` (defensa; el flujo normal no lo permite).
 7. Si marcados = 0 y no se confirmó explícitamente → `NO_CHECKED`. La UI pide confirmación “Se guardará con 0 comprados”.
-8. Validar supermercado tras `trim` (1–80).
-9. Capturar la hora con `Clock` (el momento de confirmar) y calcular fecha/hora local.
-10. Sumar las líneas marcadas con detalle. Si no hay ninguna, `total_cents = NULL`; si hay al menos una, `total_cents` es la suma (puede ser 0).
-11. Ejecutar un `UPDATE` condicionado a que la lista siga en `shopping`.
-12. Comprobar las filas afectadas: si 0, releer para distinguir “ya completada” de “estado inválido”.
-13. `COMMIT`.
+8. Capturar la hora con `Clock` (el momento de confirmar) y calcular fecha/hora local.
+9. Sumar las líneas marcadas con detalle. Si no hay ninguna, `total_cents = NULL`; si hay al menos una, `total_cents` es la suma (puede ser 0).
+10. Ejecutar un `UPDATE` condicionado a que la lista siga en `shopping`, con `supermarket_name = NULL`.
+11. Comprobar las filas afectadas: si 0, releer para distinguir “ya completada” de “estado inválido”.
+12. `COMMIT`.
 
 Si falla cualquier paso, `ROLLBACK`: no queda una compra a medias.
 
@@ -272,18 +271,17 @@ Se usa un formateador propio con arrays de días y meses en español. No se usa 
 
 ### 9.4 Captura
 
-- La hora se captura al confirmar “Finalizar compra”, no al abrir el modal.
+- La hora se captura al confirmar “Finalizar compra”, no al abrir la pantalla.
 - Se usan los getters locales del dispositivo (`getFullYear`, `getMonth`, `getDate`, `getHours`, `getMinutes`) y se rellenan a dos dígitos.
 - No se guardan segundos; el requisito es hora y minuto.
 - Si el reloj del dispositivo está mal, la fecha registrada será la del dispositivo; no hay servidor que corrija.
 
 ## 10. Supermercado
 
-- Campo de texto libre en `lists.supermarket_name`.
-- Obligatorio solo al completar.
-- Se normaliza con `trim`; se conserva el texto original para mostrar.
-- Sugerencias: las últimas 8 compras, agrupadas sin distinguir mayúsculas/minúsculas, mostradas como chips encima del campo.
-- No hay tabla `supermarkets` en el MVP.
+- Columna opcional `lists.supermarket_name`; ya no se pregunta al cerrar la compra.
+- Las compras nuevas guardan `NULL`. Las anteriores a la migración 003 conservan su texto y el historial lo sigue mostrando; si falta, se usa el nombre de la lista.
+- Si existe, se normaliza con `trim`; se conserva el texto original para mostrar.
+- No hay sugerencias ni tabla `supermarkets` en el MVP.
 - Si más adelante se quiere catálogo, geolocalización o estadísticas por tienda, se añade una tabla y una FK mediante migración; la UI cambia poco.
 
 ## 11. Migraciones
@@ -299,15 +297,17 @@ Se usa un formateador propio con arrays de días y meses en español. No se usa 
 - **Nunca se borra la base de datos automáticamente.**
 - v1 crea el esquema inicial.
 - v2 añade modo de compra, total y detalle de línea. Crea `lists_v2` e `items_v2`, copia y verifica los conteos, borra las tablas antiguas, renombra y comprueba la FK y `foreign_key_check` antes de confirmar. Las compras existentes quedan en modo `normal` y sin total.
+- v3 hace opcional `supermarket_name` en `lists` reconstruyendo `lists` e `items` con el mismo patrón que la v2: copia, verificación de conteos, borrado, renombrado, `foreign_key_check` y comprobación de la FK. Las compras antiguas conservan su supermercado y las nuevas pueden cerrarse con `NULL`.
 - Antes de una migración destructiva futura: copia de seguridad del archivo SQLite.
 
 ### 11.1 Pruebas de migración
 
 - v1 sobre BD vacía.
-- Segunda ejecución: no-op, `user_version=1`.
+- Segunda ejecución: no-op, `user_version=3`.
 - Migración de prueba con fallo inyectado: rollback, datos y versión intactos.
 - Migración 002 sobre datos v1: conserva listas y artículos, asigna `normal` a compras y deja detalle nulo.
-- Fixture con `user_version=3`: bloqueo, sin borrar.
+- Migración 003 sobre datos v2: conserva compras y artículos, mantiene el supermercado antiguo y permite insertar una compra completada con `supermarket_name = NULL`.
+- Fixture con `user_version=4`: bloqueo, sin borrar.
 - Fixture con `user_version=0` y tablas existentes: `UNKNOWN_SCHEMA`.
 
 ## 12. Consultas previstas
@@ -321,10 +321,9 @@ No se incluye SQL de implementación; estas son las consultas que la capa de dat
 | Detalle de lista | Lista por `id` + artículos por `list_id`, orden `sort_order ASC`. |
 | Modo compra | Igual que el detalle, con progreso total/marcados. |
 | Iniciar compra | Comprobar ≥1 artículo y ausencia de otra `shopping`. |
-| Finalizar | Releer lista, contar marcados, validar supermercado, sumar precios, `UPDATE` condicionado. |
+| Finalizar | Releer lista, contar marcados, sumar precios y `UPDATE` condicionado con `supermarket_name = NULL`. |
 | Historial | `status = 'completed'`, orden `completed_at_utc DESC`, con `total_cents` y `unpriced_checked_count` para catálogo. |
 | Detalle histórico | Lista `completed` + artículos; separar marcados/no marcados. |
-| Sugerencias de supermercado | Últimas 8 compras, nombres distintos sin distinguir mayúsculas. |
 | Borrar lista/compra | Borrar por `id`; cascada de artículos. |
 
 ## 13. Volumen y rendimiento

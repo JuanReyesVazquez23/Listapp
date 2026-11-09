@@ -110,7 +110,7 @@ No hubo una tercera ronda de crítica: las seis objeciones residuales tenían re
 
 | ID | Clase | Objeción | Resultado |
 |---|---|---|---|
-| O-01 | Crítico | `finishPurchase` validaba fuera de la transacción y no era idempotente. | Aceptada. Relectura de estado, conteo y supermercado dentro de la transacción; `UPDATE` condicionado; doble toque tratado como éxito. |
+| O-01 | Crítico | `finishPurchase` validaba fuera de la transacción y no era idempotente. | Aceptada. Relectura de estado y conteo dentro de la transacción; `UPDATE` condicionado; doble toque tratado como éxito. |
 | O-02 | Crítico | El contrato de transacción y los PRAGMAs no estaban definidos; los helpers de Expo no son exclusivos o no copian PRAGMAs. | Aceptada. Una conexión, cola serial, `BEGIN IMMEDIATE`/`COMMIT`/`ROLLBACK`, PRAGMAs verificados. |
 | O-03 | Alto | Entorno E2E sin resolver (Java, `adb`, cuenta EAS). | Aceptada. JDK 17 + `platform-tools` + dispositivo físico o emulador; EAS cloud como camino principal; comprobar en M0. |
 | O-04 | Alto | AC-16 exigía una migración v2 inexistente y faltaba guarda de downgrade. | Aceptada. AC-16 reescrito sin v2 ficticia; pantalla de versión incompatible que no borra la BD. |

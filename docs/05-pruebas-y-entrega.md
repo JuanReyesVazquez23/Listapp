@@ -22,10 +22,9 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
 ## 2. Pruebas unitarias
 
 - Validación de nombres de lista (1–80 tras `trim`) y de artículo (1–100).
-- Validación de supermercado (1–80).
 - Transiciones de estado permitidas y prohibidas.
 - `canStartShopping`: al menos un artículo, sin otra compra activa.
-- `canFinish`: supermercado, 0 marcados, lista completada.
+- `canFinish`: 0 marcados y lista completada (sin supermercado).
 - Cálculo de progreso: total, marcados, porcentaje, texto “7 de 12”.
 - Formato de fecha:
   - fila “27 oct 2026 · 18:42”;
@@ -53,7 +52,8 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
 - Filtro de backend (`api/_catalogCore.ts`):
   - `commertialOffer`, no `commercialOffer`;
   - `pan` no devuelve `panela`;
-  - plurales y acentos en ambos sentidos (`sardina`/`sardinas`);
+  - plurales y acentos en ambos sentidos (`sardina`/`sardinas`, `plátano`/`platano`);
+  - variantes en singular cuando el plural no devuelve nada (`platanos` → `platano`, `panes` → `pan`);
   - `1 sardina` se normaliza a `sardinas` y `2 kg de arroz` a `arroz`;
   - todas las presentaciones de la familia, sin corte artificial;
   - `imageUrl` HTTPS y `null` si falta o no es válida;
@@ -77,7 +77,7 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 
 ### 3.1 Esquema y restricciones
 
-- Crear la BD v2 desde cero.
+- Crear la BD v3 desde cero.
 - `foreign_keys=1` y `journal_mode=wal` verificados.
 - `CHECK` de estado, longitudes y cierre de lista.
 - `CHECK` de `shopping_mode` y `total_cents` por estado.
@@ -100,7 +100,7 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - La cola sigue viva después de un error.
 - `boot()` single-flight: dos llamadas concurrentes comparten promesa.
 - Boot fallido y reintento: se cierra la conexión y se repite.
-- `user_version=3`: `SCHEMA_TOO_NEW`, sin borrar datos.
+- `user_version=4`: `SCHEMA_TOO_NEW`, sin borrar datos.
 - `user_version=0` con tablas: `UNKNOWN_SCHEMA`.
 
 ### 3.3 Casos de uso
@@ -118,10 +118,9 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - Borrar el último artículo en `shopping` → `LAST_ITEM_IN_SHOPPING`.
 - Cancelar compra: desmarca todos y vuelve a `draft`.
 - Finalizar:
-  - con ≥1 marcado;
+  - con ≥1 marcado y `supermarket_name = NULL`;
   - con 0 marcados sin confirmar → `NO_CHECKED`;
   - con 0 marcados confirmado;
-  - sin supermercado → `VALIDATION`;
   - doble finalización → idempotente;
   - lista borrada → `NOT_FOUND`;
   - lista en `draft` → `INVALID_STATE`.
@@ -133,8 +132,8 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - orden descendente;
   - agrupación por mes;
   - 300 filas sin problema;
-  - detalle con comprados/no comprados.
-- Sugerencias de supermercado: últimas 8, sin duplicados por mayúsculas.
+  - detalle con comprados/no comprados;
+  - el resumen usa el nombre de la lista cuando no hay supermercado.
 - Compra con catálogo:
   - empezar fija `shopping_mode='catalog'`;
   - marcar con detalle guarda subtotal y total;
@@ -158,6 +157,10 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - deja `shopping_mode = NULL` en borradores;
   - deja detalle y total nulos;
   - verifica conteos y `foreign_key_check` antes de confirmar.
+- Migración 003 sobre datos v2:
+  - conserva listas y artículos y mantiene el supermercado antiguo;
+  - permite cerrar una compra nueva con `supermarket_name = NULL`;
+  - verifica conteos, `foreign_key_check` y la FK de `items` antes de confirmar.
 
 ## 4. Pruebas de componentes (RNTL)
 
@@ -190,18 +193,17 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - marcar/actualizar/quitar/omitir llaman al caso de uso correcto.
 - `ProgressBar`: rol progressbar y valor accesible.
 - `AddItemBar`: validación inline y envío del nombre recortado.
-- `TextField`: etiqueta visible, error anunciado, foco.
+- `TextField`: etiqueta visible, error anunciado, foco y ref al `TextInput`.
 - `PrimaryButton`: deshabilitado, estado de carga, etiqueta.
 - `Snackbar`: “Deshacer” y expiración.
-- `SupermarketInput`: chips rellenan el campo.
 - Guardas de ruta con router simulado:
   - estado incorrecto → `replace`;
   - id inexistente → `+not-found`.
-- Pantalla de finalización:
-  - botón deshabilitado sin supermercado;
+- Cierre de compra desde el modo compra:
   - confirmación con 0 marcados;
-  - `isFinishing` bloquea el botón.
-- Historial: agrupación y fila con fecha completa.
+  - `isFinishing` bloquea el botón;
+  - doble toque no lanza dos cierres.
+- Historial: agrupación y fila con fecha completa y fallback al nombre de la lista.
 
 RNTL no mide layout nativo. Los objetivos de 48 dp, la escala al 200 % y TalkBack se verifican en el checklist manual.
 
@@ -209,7 +211,8 @@ RNTL no mide layout nativo. Los objetivos de 48 dp, la escala al 200 % y TalkBac
 
 Las reglas puras de `api/_catalogCore.ts` se prueban con Jest sin levantar Vercel:
 
-- `normalizeQuery`: quita cantidades, números sueltos, stopwords y unidades; pluraliza el sustantivo que sigue a un conteo; rechaza vacío, una letra, más de cinco palabras y caracteres de control.
+- `normalizeQuery`: quita cantidades, números sueltos, stopwords y unidades; pluraliza el sustantivo que sigue a un conteo; pliega tildes; rechaza vacío, una letra, más de cinco palabras y caracteres de control.
+- `singularQueryVariants`: genera el singular quitando `-s` o deshaciendo `-es` (`panes` → `pan`), sin variantes si la palabra no acaba en `s`.
 - `readTotalFromResources`: lee el total de `resources: 0-49/297` y devuelve `null` si la cabecera falta o está rota.
 - `toCatalogResults`:
   - lee `seller.commertialOffer.Price`;
@@ -240,8 +243,8 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 6. Empezar compra.
 7. Marcar “Leche” y “Pan integral”.
 8. Verificar “2 de 3”.
-9. Finalizar con supermercado “Mercadona”.
-10. Verificar historial: fecha, hora, supermercado, “2 de 3 comprados”.
+9. Finalizar compra (sin supermercado).
+10. Verificar historial: fecha, hora, nombre de la lista, “2 de 3 comprados”.
 11. Abrir detalle: “Huevos” en “Sin comprar”.
 12. Eliminar la compra y verificar que desaparece.
 
@@ -257,7 +260,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 6. `launchApp` con `clearState: false`.
 7. Verificar “Continuar compra”.
 8. Abrir y comprobar que “Leche” sigue marcada y “Pan” no.
-9. Finalizar con “Mercadona”.
+9. Finalizar compra.
 10. Verificar el historial.
 
 ### 5.3 Entorno E2E
@@ -303,7 +306,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Cerrar la app a mitad de compra y continuar.
 - [ ] Force-stop durante una escritura: al reabrir, estado `shopping` o `completed`, nunca parcial.
 - [ ] Provocar un error de migración en un build de prueba: rollback, sin pérdida.
-- [ ] Fixture `user_version=3`: pantalla de versión incompatible, sin borrar.
+- [ ] Fixture `user_version=4`: pantalla de versión incompatible, sin borrar.
 - [ ] Deep links a estados incorrectos: redirección segura.
 - [ ] Borrar artículo y deshacer dentro de 5 s.
 - [ ] Finalizar con 0 marcados: confirmación.
@@ -316,6 +319,8 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] `?q=pan` devuelve solo panes: ni `panela`, ni el catálogo completo; aparecen todos los panes de la familia, no solo 8.
 - [ ] `?q=leche` devuelve leches; `?q=2%20kg%20de%20arroz` normaliza la cantidad.
 - [ ] `?q=1%20sardina` devuelve sardinas (la consulta se normaliza a `sardinas`), no cero.
+- [ ] `?q=pl%C3%A1tano` y `?q=platano` devuelven la misma familia; `?q=platanos` no devuelve cero porque reintenta en singular.
+- [ ] `?q=panes` no devuelve cero porque reintenta con `pan`.
 - [ ] `?q=queso` devuelve las 297 presentaciones de la familia repartidas en todas las páginas de VTEX.
 - [ ] Cada resultado trae `imageUrl` HTTPS de La Sirena; si falta, la app muestra el placeholder.
 - [ ] Sin `q` o con una sola letra → `400 invalid_query`.
@@ -329,6 +334,8 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Compra normal: el flujo es idéntico al de la versión anterior.
 - [ ] “Con La Sirena”: al abrir un artículo, las marcas aparecen solas, sin escribir, y cada una muestra su imagen.
 - [ ] Un artículo llamado “1 sardina” busca “sardinas” y muestra varias presentaciones, no cero.
+- [ ] Un artículo llamado “plátanos” encuentra presentaciones de plátano aunque se escriba sin tilde o en plural.
+- [ ] Al escribir en los campos del pie del detalle de línea (búsqueda, marca, cantidad, precio), el teclado no tapa el campo enfocado.
 - [ ] “Queso” muestra todas las presentaciones de la familia, sin quedarse en 8, y el modal abre y desplaza con fluidez aunque haya cientos.
 - [ ] Con una familia larga, el contador dice cuántas presentaciones hay y filtrar por texto o marca reduce la lista al instante, sin volver a cargar.
 - [ ] Ordenar por menor precio, mayor precio y mejor precio por medida cambia el orden de forma visible; las presentaciones sin medida quedan al final.
@@ -441,7 +448,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M0 — Base** | Scaffold Expo 58, TypeScript estricto, Expo Router, tokens, `DatabaseManager`, migración v1. | `boot()` y PRAGMAs verificados; tests de integración en verde; bundle de Android correcto. |
 | **M1 — Listas y artículos** | CRUD de listas e ítems, validación, persistencia, estados vacíos, deshacer de 5 s. | AC-01, AC-02, AC-03; tests unitarios, integración y componente. |
 | **M2 — Compra** | Empezar, marcar/desmarcar, progreso, añadir, recuperación, cancelar. | AC-04, AC-05, AC-11, AC-20; E2E de recuperación. |
-| **M3 — Finalizar e historial** | Modal, supermercado, 0 marcados, transacción, historial, detalle, eliminar. **Primer APK `preview`.** | AC-06 a AC-10; E2E principal; APK instalado y probado en dispositivo. |
+| **M3 — Finalizar e historial** | Cierre directo desde el modo compra, 0 marcados, transacción, historial, detalle, eliminar. **Primer APK `preview`.** | AC-06 a AC-10; E2E principal; APK instalado y probado en dispositivo. |
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
@@ -454,7 +461,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 - APK `preview` instalado en un dispositivo físico.
 - Flujo completo sin red; el catálogo solo añade una ayuda opcional.
 - Recuperación tras cerrar la app.
-- Historial con fecha, hora, supermercado y total de catálogo.
+- Historial con fecha, hora, nombre de la compra y total de catálogo.
 - Compra normal idéntica a la versión anterior.
 - Catálogo con La Sirena: búsqueda automática, todas las presentaciones de la familia con imagen y fallback manual.
 - TalkBack y texto al 200 % sin bloqueos.

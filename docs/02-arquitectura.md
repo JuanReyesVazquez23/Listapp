@@ -129,8 +129,7 @@ listapp/
       nueva.tsx                  # Modal crear lista
       [id]/
         index.tsx                # Detalle/edición + selector de modo
-        comprar.tsx              # Modo compra
-        finalizar.tsx            # Modal finalizar compra
+        comprar.tsx              # Modo compra + cierre directo
         detalle/
           [itemId].tsx           # Modal de marca, cantidad y precio
     compra/
@@ -142,13 +141,14 @@ listapp/
                                  # EmptyState, Snackbar, CheckboxRow
       listas/                    # ListCard, ItemRow, ShoppingItemRow,
                                  # AddItemBar, ProgressBar, StatusBadge
-      compras/                   # FinishPurchaseForm, HistoryList, PurchaseRow,
+      compras/                   # HistoryList, PurchaseRow,
                                  # PurchaseItemRow, ItemDetailForm,
+                                 # CatalogFilters,
                                  # PurchaseTotalRow (total y chip de catálogo)
     features/
       listas/hooks/              # useLists, useListDetail, useShopping,
-                                 # useFinishPurchase, useHistory,
-                                 # usePurchaseDetail, useItemDetail
+                                 # useHistory, usePurchaseDetail,
+                                 # useItemDetail
       navigation/                # applyGuard: traduce las guardas a replace
     useCases/                    # lists, items, shopping, history, catalog
     domain/                      # list, item, purchase, catalog, catalogMeasure,
@@ -162,6 +162,7 @@ listapp/
       catalog/catalogClient.ts   # cliente HTTP del proxy; timeouts y abort
       migrations/001_initial.ts
       migrations/002_item_details.ts
+      migrations/003_optional_supermarket.ts
       repositories/              # listsRepository, itemsRepository
     theme/                       # tokens, typography
     strings/es.ts                # textos visibles
@@ -283,7 +284,7 @@ El catálogo es **opcional y de solo lectura**; nunca participa en una transacci
 1. Al pulsar “Empezar compra”, la lista elige `normal` o `catalog`. El modo se guarda con el estado `shopping` y no cambia hasta cerrar o cancelar (D-35).
 2. En modo `catalog`, al abrir el detalle de un artículo, `useItemDetail` carga el ítem y su lista, y lanza **una** búsqueda automática con el nombre del artículo (D-52). El campo de búsqueda solo corrige la consulta.
 3. `searchCatalog` valida la consulta y llama a `catalogClient.search`, que hace `GET {EXPO_PUBLIC_CATALOG_API_URL}?q=…` con `AbortController`. Cada búsqueda cancela la anterior.
-4. El backend `api/catalog.ts` valida `q`, pagina VTEX de 50 en 50 hasta agotar los resultados (tope de seguridad de 2000 productos crudos), filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con todas las presentaciones y su `imageUrl`.
+4. El backend `api/catalog.ts` valida `q`, pliega tildes, pagina VTEX de 50 en 50 hasta agotar los resultados (tope de seguridad de 2000 productos crudos), filtra la familia con `_catalogCore.toCatalogResults` y devuelve `{ query, results }` con todas las presentaciones y su `imageUrl`. Si la consulta plegada no trae resultados y acaba en `s`, reintenta con sus variantes en singular (`platanos` → `platano`, `panes` → `pan`).
 5. `catalogMeasure` interpreta el tamaño de cada presentación y calcula su precio por libra, litro o unidad; `catalogResults` filtra por texto y marca, y ordena por relevancia, precio o precio por medida (D-54). Todo ocurre en memoria sobre lo ya cargado: no hay peticiones adicionales. Los resultados se pintan en una `FlatList` virtualizada con cabecera y pie fijos (D-55), de modo que solo se montan las filas visibles y sus imágenes.
 6. Elegir una presentación rellena marca, precio y cantidad 1 en el formulario. Guardar ejecuta `checkItem` con el detalle; si la línea ya estaba marcada, `updateItemDetail`.
 7. El total se calcula en el dominio con `computePurchaseTotal`: `null` si ninguna línea marcada tiene precio, parcial si faltan algunas, exacto si todas lo tienen. Se guarda en `lists.total_cents` al finalizar.
@@ -361,7 +362,7 @@ Los casos de uso lanzan `AppError` con un código estable. La UI traduce el cód
 
 | Código | Significado | Respuesta de UI |
 |---|---|---|
-| `VALIDATION` | Nombre vacío, supermercado inválido, longitud. | Mensaje inline junto al campo. |
+| `VALIDATION` | Nombre vacío o longitud fuera de rango. | Mensaje inline junto al campo. |
 | `NOT_FOUND` | Lista o artículo inexistente. | Redirección segura o `+not-found`. |
 | `INVALID_STATE` | Acción no permitida para el estado actual. | Mensaje y recarga de la pantalla. |
 | `LIST_COMPLETED` | Se intentó mutar una compra completada. | “La compra ya está finalizada”; recarga. |
@@ -553,7 +554,7 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | A08 | Sin Reanimated; `Animated` de RN. | Aceptada |
 | A09 | StyleSheet + tokens; sin NativeWind. | Aceptada |
 | A10 | Fuente del sistema; sin fuentes custom. | Aceptada |
-| A11 | Supermercado como texto libre con sugerencias. | Aceptada |
+| A11 | Supermercado opcional: las compras nuevas guardan `NULL`; las antiguas conservan el suyo. | Aceptada |
 | A12 | Una sola compra activa, con índice único parcial. | Aceptada |
 | A13 | Fecha/hora local + UTC; formateador español propio. | Aceptada |
 | A14 | Historial sin paginación en el MVP. | Aceptada |
@@ -565,3 +566,4 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | A20 | Precios y totales en céntimos enteros; subtotal con un solo redondeo y total de catálogo al cerrar. | Aceptada |
 | A21 | Detalle de línea en columnas de `items` con migración 002; sin tabla `item_details`. | Aceptada |
 | A22 | Sugerencias automáticas al abrir el detalle; el buscador solo corrige la consulta (D-52). | Aceptada |
+| A23 | Búsqueda de catálogo insensible a tildes y con reintento en singular si el plural no devuelve nada. | Aceptada |

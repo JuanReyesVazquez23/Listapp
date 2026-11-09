@@ -17,8 +17,8 @@
 | **Necesidad** | Abre la app porque tiene que comprar. | “No quiero olvidarme de nada.” | Listas en papel o notas dispersas. | Portada clara con “Nueva lista” y compra activa. |
 | **Preparación** | Crea la lista y añade artículos. | “Voy apuntando lo que falta.” | Añadir uno a uno es lento. | Campo siempre visible, autofoco y teclado que no tapa. |
 | **Compra** | Llega al supermercado y empieza. | “Voy con prisa, una mano ocupada.” | Marcar es incómodo; no sabe qué falta. | Modo compra a pantalla completa, filas de 56 dp, progreso. |
-| **Cierre** | Finaliza y elige supermercado. | “¿Se habrá guardado?” | No recuerda dónde ni cuándo compró. | Modal de finalización con resumen, supermercado y confirmación. |
-| **Recuerdo** | Consulta el historial. | “¿Cuánto compré? ¿Dónde?” | El historial se mezcla con pendientes. | Tab Historial separada, fecha completa y supermercado. |
+| **Cierre** | Finaliza la compra desde el modo compra. | “¿Se habrá guardado?” | No recuerda cuándo compró. | Cierre directo, confirmación solo si hay 0 marcados y navegación al detalle. |
+| **Recuerdo** | Consulta el historial. | “¿Cuánto compré? ¿Cuándo?” | El historial se mezcla con pendientes. | Tab Historial separada, fecha completa y nombre de la compra. |
 
 ## 3. Mapa de navegación
 
@@ -28,15 +28,13 @@ flowchart TD
   B --> C["Detalle de lista"]
   A --> C
   C --> D["Modo compra"]
-  D --> E["Finalizar compra (modal)"]
+  D -->|Finalizar compra| F["Detalle de compra"]
   D --> I["Detalle de línea (modal)"]
-  E --> F["Detalle de compra"]
   A --> G["Tab Historial"]
   G --> F
   F --> G
   C --> H["+not-found / error de estado"]
   D --> H
-  E --> H
 ```
 
 ## 4. Rutas y guardas
@@ -48,7 +46,6 @@ flowchart TD
 | `/lista/nueva` | `app/lista/nueva.tsx` | Nueva lista | Modal | Ninguna. |
 | `/lista/[id]` | `app/lista/[id]/index.tsx` | Detalle/edición | Stack | Existe; `draft` o `shopping`. Si `completed` → `/compra/[id]`. Si no existe → `+not-found`. |
 | `/lista/[id]/comprar` | `app/lista/[id]/comprar.tsx` | Modo compra | Stack, pantalla completa | Solo `shopping`. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; no existe → `+not-found`. |
-| `/lista/[id]/finalizar` | `app/lista/[id]/finalizar.tsx` | Finalizar compra | Modal | Solo `shopping`. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; no existe → `+not-found`. |
 | `/lista/[id]/detalle/[itemId]` | `app/lista/[id]/detalle/[itemId].tsx` | Detalle de línea | Modal | Solo `shopping` y modo `catalog`; el artículo debe existir. `draft` → `/lista/[id]`; `completed` → `/compra/[id]`; modo `normal` → `/lista/[id]/comprar`; no existe → `+not-found`. |
 | `/compra/[id]` | `app/compra/[id].tsx` | Detalle de compra | Stack | Solo `completed`. `draft` → `/lista/[id]`; `shopping` → `/lista/[id]/comprar`; no existe → `+not-found`. |
 | `*` | `app/+not-found.tsx` | No encontrado | Stack | — |
@@ -60,11 +57,11 @@ flowchart TD
 - Las redirecciones usan `replace`, no `push`, para no dejar rutas inválidas en el historial.
 - Tras finalizar: se resetea el stack a Historial y se abre el detalle de la compra. “Atrás” vuelve al Historial, no al modo compra.
 - El botón atrás de Android en modo compra vuelve al detalle; **no cancela** la compra.
-- El modal de finalizar se puede cerrar sin finalizar; no se escribe nada hasta confirmar.
+- Finalizar no abre un modal: se ejecuta desde el modo compra, siempre pide confirmación y no se escribe nada hasta aceptarla.
 - El detalle de línea se abre solo en modo `catalog`; en compra normal la fila sigue marcando directamente.
 - Atrás en el detalle de línea **no descarta en silencio**: pide confirmación, porque el modal se abre para elegir marca y precio.
 - Tras guardar, omitir o quitar, el detalle de línea se cierra solo y el modo compra relee al recuperar el foco.
-- Mientras `isFinishing` está activo, se bloquean el botón de finalizar, el gesto de cierre, el botón atrás y el cierre del modal.
+- Mientras `isFinishing` está activo, se bloquean el botón de finalizar y el botón atrás.
 - Los deep links no son una función de producto, pero están guardados: una ruta con estado incorrecto redirige sin crash.
 
 ### 4.2 Grafo de estados de ruta
@@ -77,12 +74,6 @@ flowchart TD
 
 /lista/[id]/comprar
   ├─ shopping         → renderiza modo compra
-  ├─ draft            → replace /lista/[id]
-  ├─ completed        → replace /compra/[id]
-  └─ no existe        → replace /+not-found
-
-/lista/[id]/finalizar
-  ├─ shopping         → renderiza modal
   ├─ draft            → replace /lista/[id]
   ├─ completed        → replace /compra/[id]
   └─ no existe        → replace /+not-found
@@ -179,7 +170,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - En modo `normal`, la fila marca y desmarca con un toque, igual que antes: ni chip, ni total, ni modal.
 - Las filas **no se mueven** al marcarse; se evita un salto bajo el pulgar.
 - Campo “Añadir artículo” al final, con teclado que no tapa la lista.
-- El modo compra de **M2** incluye empezar, marcar/desmarcar, progreso, añadir, recuperar y cancelar. El botón “Finalizar compra” y el modal de finalización se incorporan en **M3**.
+- El modo compra de **M2** incluye empezar, marcar/desmarcar, progreso, añadir, recuperar y cancelar. El cierre directo con “Finalizar compra” se incorpora en **M3**.
 - “Cancelar compra” pide confirmación y avisa de que se desmarcarán todos los artículos y la lista volverá a borrador.
 - Volver atrás no cancela; la compra sigue activa.
 - No se puede borrar el último artículo en modo compra; para vaciar, se cancela y se edita el borrador.
@@ -193,7 +184,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - Cabecera: “Detalle”, nombre del artículo y botón de cerrar. El gesto de cerrar y el botón Atrás piden confirmación para no perder lo escrito.
 - Sección **“Marcas y presentaciones”**:
   - al abrir, la app busca **sola** con el nombre del artículo; el usuario no escribe nada (D-52);
-  - la consulta descarta cantidades y números sueltos y pluraliza el sustantivo: `1 sardina` busca `sardinas` (D-53);
+  - la consulta descarta cantidades y números sueltos, pluraliza el sustantivo (`1 sardina` busca `sardinas`, D-53), pliega tildes (`plátano` ≡ `platano`) y, si el plural no devuelve nada, reintenta en singular (`platanos` → `platano`);
   - mientras busca: spinner y “Buscando en La Sirena…”;
   - resultados: **todos** los de la familia, sin límite artificial; cada uno con su imagen de La Sirena, marca, nombre, presentación y precio; se elige con un toque;
   - la lista está **virtualizada**: solo se montan las filas visibles, así una familia de cientos de presentaciones no bloquea el modal;
@@ -222,27 +213,20 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - Errores por campo debajo de cada control; el botón no envía un formulario inválido.
 - Si la lista ya no admite edición (compra cerrada o modo normal), el modal redirige sin escribir.
 
-### 5.6 Finalizar compra (modal)
+### 5.6 Finalizar compra
 
-**Objetivo:** cerrar la compra con el supermercado y la fecha.
+**Objetivo:** cerrar la compra y guardar la fecha sin pedir datos extra.
 
-- Resumen: “8 comprados · 2 sin comprar”.
-- En modo `catalog`, bajo el resumen: chip “Con La Sirena” y total de la compra, con el mismo formato exacto/parcial/sin precios que en el modo compra.
-- Campo “Supermercado”:
-  - obligatorio;
-  - `trim` y máximo 80;
-  - chips con las últimas 8 compras para rellenar con un toque.
-- Aviso si hay artículos sin comprar: “Se guardarán como no comprados”.
-- Si hay 0 marcados:
-  - aviso destacado “No has marcado ningún artículo”;
-  - al pulsar “Finalizar”, confirmación: “Se guardará la compra con 0 comprados. ¿Continuar?”.
-- Botón “Finalizar compra”:
-  - deshabilitado sin supermercado;
-  - deshabilitado mientras `isFinishing`;
-  - spinner en el botón durante la transacción.
-- Si falla: se queda en el modal, mensaje “No se pudo guardar. Reintenta” y opción de reintentar.
+- El botón “Finalizar compra” vive en el modo compra; ya no hay modal posterior ni campo de supermercado.
+- Resumen previo en la pantalla: “8 comprados · 2 sin comprar”.
+- Al pulsar “Finalizar compra” siempre se pide confirmación: “¿Seguro que quieres terminar la compra?”. Si quedan artículos sin comprar, el aviso indica cuántos se guardarán así.
+- Si hay 0 marcados, la confirmación refuerza el aviso: “No has marcado ningún artículo. Se guardará la compra con 0 comprados. ¿Quieres continuar?”.
+- Mientras se guarda:
+  - el botón muestra “Guardando…” y queda deshabilitado;
+  - un ref local evita que un doble toque lance dos cierres.
+- Si falla: snackbar “No se pudo guardar. Reintenta.” y se puede volver a intentar.
 - Si la lista ya estaba completada (doble toque o carrera): se trata como éxito y se navega al detalle.
-- Al confirmar: háptico de éxito y anuncio accesible “Compra guardada”.
+- Al confirmar: háptico de éxito y anuncio accesible “Compra guardada”; el historial queda como raíz del stack y se abre el detalle de la compra.
 
 ### 5.7 Historial
 
@@ -252,7 +236,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - `SectionList` agrupada por mes: “octubre 2026”.
 - Fila:
   - “27 oct 2026 · 18:42”;
-  - supermercado;
+  - nombre de la lista o, en compras antiguas, su supermercado;
   - “8 de 10 comprados”;
   - en compras con La Sirena: chip “Con La Sirena” y total (“Total …”, “Total parcial …” o “Aún no hay precios”);
   - chevron.
@@ -265,7 +249,7 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 
 **Objetivo:** consultar qué se compró y qué no.
 
-- Cabecera: supermercado y fecha completa:
+- Cabecera: nombre de la lista o supermercado (si la compra es antigua) y fecha completa:
   - “martes, 27 de octubre de 2026, 18:42”.
 - Resumen: “8 comprados · 2 sin comprar”.
 - En compras con La Sirena: chip “Con La Sirena” y total guardado, con el mismo formato exacto/parcial/sin precios.
@@ -359,7 +343,7 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | `h2` | 22 / 28 | 600 | Sección / nombre de lista. |
 | `title` | 18 / 24 | 600 | Nombre de artículo destacado. |
 | `body` | 16 / 24 | 400 | Texto general. |
-| `bodyStrong` | 16 / 24 | 600 | Supermercado, totales. |
+| `bodyStrong` | 16 / 24 | 600 | Nombres destacados, totales. |
 | `label` | 14 / 20 | 500 | Etiquetas de campo, tabs. |
 | `caption` | 12 / 16 | 400 | Fecha, metadatos. |
 | `button` | 16 / 20 | 600 | Botones. |
@@ -405,12 +389,11 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | `ProgressBar` | Altura 8, track `brand.100`, fill `brand.600`, etiqueta “7 de 12” y porcentaje accesible. |
 | `ListCard` | Nombre, número de artículos, badge de estado; borde `neutral.200`. |
 | `ItemRow` | Nombre, edición inline, eliminar; memorizado. |
-| `PurchaseRow` | Fecha completa, supermercado, “8 de 10 comprados”, total y chip de catálogo si aplica, chevron. |
-| `ItemDetailForm` | Marcas ya buscadas, selección, formulario manual, subtotal y acciones. |
+| `PurchaseRow` | Fecha completa, nombre de la compra (o supermercado antiguo), “8 de 10 comprados”, total y chip de catálogo si aplica, chevron. |
+| `ItemDetailForm` | Marcas ya buscadas, selección, formulario manual, subtotal y acciones; desplaza el campo enfocado por encima del teclado. |
 | `PurchaseTotalRow` | Total exacto, parcial o “Aún no hay precios”; `CatalogChip` “Con La Sirena”. |
 | `EmptyState` | Icono, título, explicación y CTA. |
 | `Snackbar` | Errores no bloqueantes y “Deshacer”; `accessibilityLiveRegion="polite"`. |
-| `SupermarketInput` | Campo + chips de sugerencias. |
 
 **Confirmaciones destructivas:** `Alert.alert` nativo, accesible y sin dependencia extra. No hay bottom sheets propios ni librería de modales.
 
@@ -487,8 +470,8 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Catálogo sin red | “Sin conexión. Puedes continuar a mano.”, “Reintentar” |
 | Compra | “Compra”, “7 de 12”, “Finalizar compra”, “Cancelar compra” |
 | Cancelar | “Se desmarcarán todos los artículos y la lista volverá a borrador. ¿Cancelar la compra?” |
-| Finalizar | “Supermercado”, “¿Dónde has comprado?”, “8 comprados · 2 sin comprar”, “Se guardarán como no comprados” |
-| Cero marcados | “No has marcado ningún artículo. Se guardará la compra con 0 comprados. ¿Continuar?” |
+| Finalizar | “8 comprados · 2 sin comprar”, “¿Seguro que quieres terminar la compra?”, “Se guardarán 2 artículos sin comprar”, “Finalizar compra”, “Guardando…”, “Compra guardada” |
+| Cero marcados | “No has marcado ningún artículo. Se guardará la compra con 0 comprados. ¿Quieres continuar?” |
 | Historial | “Historial”, “Todavía no has finalizado ninguna compra” |
 | Detalle histórico | “Comprados”, “Sin comprar”, “Eliminar compra” |
 | Borrado de artículo | “Artículo eliminado”, “Deshacer” |
@@ -520,7 +503,8 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 
 - Edge-to-edge con `react-native-safe-area-context`.
 - El botón inferior fijo respeta el inset inferior.
-- `KeyboardAvoidingView` en detalle y compra; `keyboardShouldPersistTaps="handled"`.
+- `KeyboardAwareView` con `behavior="padding"` y `keyboardVerticalOffset` igual a la altura del header nativo en nueva lista, detalle, compra y detalle de línea; `keyboardShouldPersistTaps="handled"`. Sin ese descuento, el padding se queda corto por la altura del header y el campo inferior sigue tapado.
+- En el detalle de línea, al enfocar un campo del pie se mide su posición y se desplaza la `FlatList` lo justo para que quede por encima del teclado.
 - El campo de añadir no queda tapado por el teclado.
 - Orientación vertical; no se optimiza landscape ni tablet.
 - En pantallas pequeñas, el contenido scrollea; los botones principales no se solapan con el teclado.
@@ -541,5 +525,6 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Fecha | Formateador propio en español; sin `Intl` en la UI. |
 | Historial | `SectionList` por mes; sin paginación. |
 | Modo de compra | Selector al empezar; fijo hasta cerrar o cancelar. |
-| Catálogo | Ayuda opcional, nunca paso obligatorio; búsqueda automática, sin límite artificial de resultados, con imagen por presentación. |
+| Catálogo | Ayuda opcional, nunca paso obligatorio; búsqueda automática, sin límite artificial de resultados, insensible a tildes y con reintento en singular, con imagen por presentación. |
+| Supermercado | Ya no se pregunta al finalizar; las compras nuevas guardan `NULL` y las antiguas conservan el dato. |
 | Total | Solo en compras con La Sirena; exacto, parcial o “Aún no hay precios”. |

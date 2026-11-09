@@ -40,8 +40,8 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-07 | ¿Se puede borrar el último artículo en modo compra? | **No.** Para vaciar, se cancela la compra y se edita el borrador. | Permitirlo deja una compra sin artículos y obliga a manejar otro estado límite. | 01, 03, 04 |
 | D-08 | ¿Se puede borrar una compra del historial? | **Sí, con confirmación.** El contenido es inmutable; solo se elimina. | Prohibirlo obliga a conservar historial para siempre; editarlo rompe la trazabilidad. | 01, 03, 04 |
 | D-09 | ¿Se puede borrar una lista mientras está en compra? | **Sí, con confirmación que avisa de que se pierde el progreso.** | La alternativa es obligar a cancelar primero; añade un paso pero evita borrados accidentales. | 03, 04 |
-| D-10 | ¿Supermercado como catálogo o texto libre? | **Texto libre, obligatorio al finalizar, con sugerencias de las últimas 8 compras.** | Un catálogo exige mantener datos, altas y duplicados; no aporta al MVP. | 01, 03 |
-| D-11 | ¿Supermercado predeterminado? | **No.** Se muestran las últimas 8 compras como sugerencias, pero el campo no se rellena solo. | Rellenarlo acelera el flujo, pero puede guardar el supermercado equivocado sin que el usuario lo note. | 03, 04 |
+| D-10 | ¿Se pide el supermercado al finalizar? | **No.** Las compras nuevas guardan `NULL`; las antiguas conservan su texto y el historial lo sigue mostrando. | Preguntar por un dato que el usuario no siempre recuerda frena el cierre; la fecha y el nombre de la lista ya identifican la compra. | 01, 03, 04 |
+| D-11 | ¿Supermercado predeterminado? | **Derogada por D-56.** Ya no hay campo ni sugerencias. | Mantener un campo opcional con sugerencias añade UI y estados para un dato que ya no se pide. | 03, 04 |
 | D-12 | ¿Cantidades y precios? | **Derogada por D-33.** Ya están estructurados en modo La Sirena. | El alcance cambió el 31 oct 2026. La compra normal sigue sin precios. | 01, 03 |
 | D-13 | ¿Se puede añadir un artículo durante la compra? | **Sí, al final de la lista.** | Es el caso real de “se me olvidó algo”; bloquearlo obliga a cancelar. | 01, 03, 04 |
 | D-14 | ¿Se puede editar el nombre de la lista en compra? | **Sí.** | Es inocuo y evita cancelar para corregir una errata. | 03, 04 |
@@ -98,9 +98,11 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-50 | Copia antes de la migración 002 | **Sin copia automática de archivo**: migración atómica con verificación de conteos y FK. Copia manual antes del primer APK con datos reales. | `VACUUM INTO` no funciona dentro de la transacción y una ruta de archivo añade un fallo nuevo. | 03, 05 |
 | D-51 | Visibilidad del modo | **Chip “Con La Sirena” solo en modo catálogo**; la compra normal conserva su interfaz actual. | Mostrar un chip en normal contradice “idéntica a hoy”. | 01, 04 |
 | D-52 | Sugerencias al marcar | **Automáticas:** al abrir el detalle se busca con el nombre del artículo y se muestran sus marcas y presentaciones sin escribir nada. El campo de búsqueda solo corrige la consulta. | Es el comportamiento inteligente que pidió el usuario; obligarle a teclear convierte la ayuda en trabajo. | 01, 04 |
-| D-53 | Consulta e imágenes del catálogo | **La consulta descarta cantidades y números sueltos y pluraliza el sustantivo** (`1 sardina` → `sardinas`); cada resultado incluye la `imageUrl` de La Sirena y un placeholder si falta. | VTEX devuelve cero con `1 sardina` y el usuario pidió reconocer cada presentación por su imagen. | 01, 02, 04 |
+| D-53 | Consulta e imágenes del catálogo | **La consulta descarta cantidades y números sueltos, pliega tildes y pluraliza el sustantivo** (`1 sardina` → `sardinas`, `plátano` → `platano`); cada resultado incluye la `imageUrl` de La Sirena y un placeholder si falta. | VTEX devuelve cero con `1 sardina` y el usuario pidió reconocer cada presentación por su imagen. | 01, 02, 04 |
 | D-54 | Filtros, orden y precio por medida | **Todo se calcula en el cliente sobre los resultados ya cargados.** El tamaño se interpreta desde nombre y presentación, se compara por libra, litro o unidad y se muestra redondeado a céntimos; sin medida reconocible no se muestra precio por medida. Los filtros se reinician al cambiar la consulta. | Con familias de cientos de presentaciones el precio suelto no permite comparar; el backend no devuelve una medida estructurada y no hace falta otra petición. | 01, 04, 05 |
 | D-55 | Virtualización del catálogo | **Una `FlatList` con cabecera y pie fijos** sustituye al `ScrollView`; las filas se memoizan, se montan de 8 en 8 y se liberan fuera de la ventana visible. | Con 208 presentaciones e imágenes, montar todo de golpe bloqueaba el modal en móviles modestos; la virtualización mantiene el coste ligado a lo visible. | 02, 04, 05 |
+| D-56 | Supermercado opcional | **Dejar de preguntar dónde se compró.** Las compras nuevas guardan `supermarket_name = NULL`; la migración 003 relaja el `CHECK` reconstruyendo `lists` e `items` y conserva el dato de las compras antiguas. | El cierre debe ser inmediato; el historial usa el nombre de la lista cuando no hay supermercado. | 01, 02, 03, 04, 05 |
+| D-57 | Búsqueda insensible a tildes y plurales | **Plegar tildes antes de consultar y reintentar en singular si VTEX devuelve 0** (`platanos` → `platano`, `panes` → `pan`). | VTEX no reconoce todos los plurales ni todas las tildes; el usuario escribe como habla y debe encontrar la familia igual. | 01, 02, 04, 05 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 
@@ -158,6 +160,8 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-53 | 5 nov 2026 | Limpiar cantidades, pluralizar el sustantivo y devolver la imagen de cada presentación | Usuario |
 | D-54 | 7 nov 2026 | Filtros y orden locales; precio por libra, litro o unidad calculado desde el texto | Usuario |
 | D-55 | 7 nov 2026 | Virtualizar los resultados del catálogo para familias grandes | Orquestador, derivado del reporte de lentitud |
+| D-56 | 8 nov 2026 | Supermercado opcional; compras nuevas con `NULL` y migración 003 que conserva las antiguas | Usuario |
+| D-57 | 8 nov 2026 | Búsqueda sin tildes y reintento en singular cuando el plural no devuelve nada | Usuario |
 | D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
 | D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |
