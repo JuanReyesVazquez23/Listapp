@@ -123,7 +123,10 @@ export function normalizeQuery(raw: string): NormalizedQuery {
     .replace(UNSAFE_CHARACTERS, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const query = removeQuantities(cleaned);
+  // La búsqueda de La Sirena no pliega todas las tildes y el filtro de familia
+  // compara palabras sin diacríticos: se pliega aquí una sola vez para que
+  // `plátano` y `platano` recorran exactamente el mismo camino.
+  const query = stripAccents(removeQuantities(cleaned));
 
   if (query.length === 0) {
     return {
@@ -215,6 +218,46 @@ function stripAccents(text: string): string {
   return text.normalize('NFD').replace(/\p{M}+/gu, '');
 }
 
+/**
+ * Variantes en singular de una consulta ya plegada.
+ *
+ * VTEX no encuentra `platanos` pero sí `platano`, así que cuando la consulta
+ * original devuelve cero productos se prueba primero quitando la `-s` final y
+ * después deshaciendo el plural en `-es` (`panes` → `pan`, `arroces` → `arroz`).
+ * El orden importa: `leches` necesita quitar solo la `s`, mientras que `panes`
+ * necesita quitar `es`. Solo se generan variantes cuando la consulta acaba en
+ * `s`; una palabra invariable se queda como está.
+ */
+export function singularQueryVariants(query: string): string[] {
+  const words = query.split(' ');
+  const candidates = [
+    words.map(singularByDroppingS).join(' '),
+    words.map(singularByDroppingEs).join(' '),
+  ];
+
+  const variants = new Set<string>();
+  for (const candidate of candidates) {
+    if (candidate !== query && /\p{L}/u.test(candidate)) {
+      variants.add(candidate);
+    }
+  }
+  return [...variants];
+}
+
+function singularByDroppingS(word: string): string {
+  return word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
+}
+
+function singularByDroppingEs(word: string): string {
+  if (word.endsWith('ces') && word.length > 4) {
+    return `${word.slice(0, -3)}z`;
+  }
+  if (word.endsWith('es') && word.length > 4) {
+    return word.slice(0, -2);
+  }
+  return singularByDroppingS(word);
+}
+
 function isSignificantTerm(term: string): boolean {
   if (term.length < 2 || /^\d+$/.test(term)) {
     return false;
@@ -241,11 +284,14 @@ export function toCatalogResults(
   data: unknown,
   terms: readonly string[],
 ): CatalogResult[] {
-  if (!Array.isArray(data) || terms.length === 0) {
+  const normalizedTerms = terms
+    .map(normalizeForMatch)
+    .filter((term) => term.length > 0);
+  if (!Array.isArray(data) || normalizedTerms.length === 0) {
     return [];
   }
 
-  const primary = terms[0];
+  const primary = normalizedTerms[0];
   const seen = new Set<string>();
   const candidates: Array<{
     result: CatalogResult;
@@ -305,7 +351,7 @@ export function toCatalogResults(
     .filter((entry) => !familyHasCategory || entry.categoryMatch)
     .map((entry) => ({
       result: entry.result,
-      score: scoreMatch(entry.haystack, terms) + (entry.categoryMatch ? 1 : 0),
+      score: scoreMatch(entry.haystack, normalizedTerms) + (entry.categoryMatch ? 1 : 0),
     }));
 
   scored.sort((left, right) => {

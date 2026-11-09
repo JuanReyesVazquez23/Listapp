@@ -21,6 +21,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   normalizeQuery,
   readTotalFromResources,
+  singularQueryVariants,
   toCatalogResults,
 } from './_catalogCore';
 
@@ -74,13 +75,58 @@ export default async function handler(
   );
   const deadline = Date.now() + TOTAL_DEADLINE_MS;
 
-  const firstPage = await fetchPage(baseUrl, validation.query, 0, deadline);
-  if (!firstPage) {
+  // VTEX no siempre reconoce el plural (`platanos` devuelve 0 y `platano` 8).
+  // Se intenta primero la consulta plegada y, solo si no trae nada, sus
+  // variantes en singular. Así el caso normal no paga peticiones extra.
+  const candidates = [
+    validation.query,
+    ...singularQueryVariants(validation.query),
+  ];
+  const products: unknown[] = [];
+  let fetched = false;
+
+  for (const candidate of candidates) {
+    const page = await fetchAllPages(baseUrl, candidate, deadline);
+    if (page === null) {
+      continue;
+    }
+    fetched = true;
+    if (page.items.length > 0) {
+      products.push(...page.items);
+      break;
+    }
+    if (Date.now() >= deadline) {
+      break;
+    }
+  }
+
+  if (!fetched) {
     response.setHeader('Cache-Control', 'no-store');
     response.status(Date.now() >= deadline ? 504 : 502).json({
       error: Date.now() >= deadline ? 'timeout' : 'upstream_error',
     });
     return;
+  }
+
+  const results = toCatalogResults(products, validation.terms);
+
+  // La respuesta es pública y no depende del usuario: se puede cachear en
+  // el borde para que abrir varios artículos seguidos no golpee a La Sirena.
+  response.setHeader(
+    'Cache-Control',
+    'public, s-maxage=300, stale-while-revalidate=600',
+  );
+  response.status(200).json({ query: validation.query, results });
+}
+
+async function fetchAllPages(
+  baseUrl: string,
+  query: string,
+  deadline: number,
+): Promise<PageResult | null> {
+  const firstPage = await fetchPage(baseUrl, query, 0, deadline);
+  if (!firstPage) {
+    return null;
   }
 
   const products: unknown[] = [...firstPage.items];
@@ -95,7 +141,7 @@ export default async function handler(
     for (let index = 0; index < pageStarts.length; index += PAGE_CONCURRENCY) {
       const batch = pageStarts.slice(index, index + PAGE_CONCURRENCY);
       const pages = await Promise.all(
-        batch.map((from) => fetchPage(baseUrl, validation.query, from, deadline)),
+        batch.map((from) => fetchPage(baseUrl, query, from, deadline)),
       );
       for (const page of pages) {
         if (page !== null) {
@@ -113,7 +159,7 @@ export default async function handler(
       from < wantedProducts &&
       Date.now() < deadline
     ) {
-      const page = await fetchPage(baseUrl, validation.query, from, deadline);
+      const page = await fetchPage(baseUrl, query, from, deadline);
       if (page === null) {
         break;
       }
@@ -123,15 +169,7 @@ export default async function handler(
     }
   }
 
-  const results = toCatalogResults(products, validation.terms);
-
-  // La respuesta es pública y no depende del usuario: se puede cachear en
-  // el borde para que abrir varios artículos seguidos no golpee a La Sirena.
-  response.setHeader(
-    'Cache-Control',
-    'public, s-maxage=300, stale-while-revalidate=600',
-  );
-  response.status(200).json({ query: validation.query, results });
+  return { items: products, total };
 }
 
 async function fetchPage(
