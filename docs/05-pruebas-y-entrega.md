@@ -48,6 +48,7 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
   - precio obligatorio y positivo;
   - id de catálogo opcional de hasta 40.
 - Total de compra: exacto, parcial, `null` sin precios y `0` válido.
+- Confirmación de cierre (`src/features/listas/finishConfirmation.ts`): siempre pregunta; avisa cuántos quedan sin comprar y refuerza el aviso con 0 marcados.
 - Consulta de catálogo: longitud, palabras, stopwords, unidades, cantidades y caracteres inválidos.
 - Filtro de backend (`api/_catalogCore.ts`):
   - `commertialOffer`, no `commercialOffer`;
@@ -86,7 +87,7 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
 - `sort_order > 0` y único por lista.
 - FK con cascada al borrar lista.
 - Índice único de una sola compra `shopping`.
-- `user_version=2` al terminar.
+- `user_version=3` al terminar.
 
 ### 3.2 Transacciones y recuperación
 
@@ -200,7 +201,8 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - estado incorrecto → `replace`;
   - id inexistente → `+not-found`.
 - Cierre de compra desde el modo compra:
-  - confirmación con 0 marcados;
+  - siempre pide confirmación, también con artículos marcados;
+  - con 0 marcados refuerza el aviso;
   - `isFinishing` bloquea el botón;
   - doble toque no lanza dos cierres.
 - Historial: agrupación y fila con fecha completa y fallback al nombre de la lista.
@@ -243,7 +245,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 6. Empezar compra.
 7. Marcar “Leche” y “Pan integral”.
 8. Verificar “2 de 3”.
-9. Finalizar compra (sin supermercado).
+9. Finalizar compra (sin supermercado) y aceptar la confirmación.
 10. Verificar historial: fecha, hora, nombre de la lista, “2 de 3 comprados”.
 11. Abrir detalle: “Huevos” en “Sin comprar”.
 12. Eliminar la compra y verificar que desaparece.
@@ -260,7 +262,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 6. `launchApp` con `clearState: false`.
 7. Verificar “Continuar compra”.
 8. Abrir y comprobar que “Leche” sigue marcada y “Pan” no.
-9. Finalizar compra.
+9. Finalizar compra y aceptar la confirmación.
 10. Verificar el historial.
 
 ### 5.3 Entorno E2E
@@ -309,7 +311,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Fixture `user_version=4`: pantalla de versión incompatible, sin borrar.
 - [ ] Deep links a estados incorrectos: redirección segura.
 - [ ] Borrar artículo y deshacer dentro de 5 s.
-- [ ] Finalizar con 0 marcados: confirmación.
+- [ ] Finalizar con y sin marcados: siempre pide confirmación; con 0 refuerza el aviso.
 - [ ] Cancelar compra: desmarca y vuelve a borrador.
 
 ### 6.5 Catálogo con y sin red
@@ -452,7 +454,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. La etapa de datos de M3 cubre la finalización transaccional, el historial, las sugerencias y el borrado con cascada; la etapa de UI cubre el modal, el historial, el detalle y las guardas de ruta. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales, precio por libra, litro o unidad y resultados virtualizados. Verificación local: `npx tsc --noEmit`, `npm run lint`, 37 suites / 285 pruebas en verde y `npx expo export --platform android` correcto. Backend desplegado en producción (`dpl_7rEjQWifHjv2RQrc7PjsMbkHKX91`) y verificado con `pan` (102), `1 sardina` (27), `queso` (208) y `2 kg de arroz` (85), todas con `imageUrl` HTTPS. APK `preview` build `35d9af56-91a9-45a5-b96a-c634a614655b` (versionCode 2) descargado en `C:\Users\jeanx\Downloads\listapp-preview.apk`; el APK con filtros y lista virtualizada se compila al cerrar esta corrección. Queda pendiente de entrega: instalar el APK nuevo en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
+**Estado:** M0, M1, M2 y M3 implementados. El cierre de compra es directo desde el modo compra, siempre con confirmación explícita y sin preguntar por el supermercado; las compras nuevas guardan `NULL` y la migración 003 conserva el dato de las antiguas. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, plegado de tildes y reintento en singular, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales, precio por libra, litro o unidad y resultados virtualizados. El teclado descuenta la altura del header nativo y el detalle de línea desplaza el campo enfocado; el panel de diagnóstico de base de datos se eliminó. Verificación local: `npx tsc --noEmit`, `npm run lint`, 35 suites / 267 pruebas en verde y `npx expo export --platform android` correcto. Backend de producción desplegado y verificado con `plátano`/`platano` (7 resultados), `platanos` (7) y `panes` (37). APK `preview` más reciente: build `b0fff7ad-50ef-4ae2-81bd-c2f964da0a54` (versionCode 6), disponible en EAS; no se descarga en la carpeta local. Queda pendiente de entrega: instalar el APK en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
 
 ## 11. Definición de terminado (MVP)
 

@@ -103,6 +103,8 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | D-55 | Virtualización del catálogo | **Una `FlatList` con cabecera y pie fijos** sustituye al `ScrollView`; las filas se memoizan, se montan de 8 en 8 y se liberan fuera de la ventana visible. | Con 208 presentaciones e imágenes, montar todo de golpe bloqueaba el modal en móviles modestos; la virtualización mantiene el coste ligado a lo visible. | 02, 04, 05 |
 | D-56 | Supermercado opcional | **Dejar de preguntar dónde se compró.** Las compras nuevas guardan `supermarket_name = NULL`; la migración 003 relaja el `CHECK` reconstruyendo `lists` e `items` y conserva el dato de las compras antiguas. | El cierre debe ser inmediato; el historial usa el nombre de la lista cuando no hay supermercado. | 01, 02, 03, 04, 05 |
 | D-57 | Búsqueda insensible a tildes y plurales | **Plegar tildes antes de consultar y reintentar en singular si VTEX devuelve 0** (`platanos` → `platano`, `panes` → `pan`). | VTEX no reconoce todos los plurales ni todas las tildes; el usuario escribe como habla y debe encontrar la familia igual. | 01, 02, 04, 05 |
+| D-58 | Confirmación antes de finalizar | **Preguntar siempre “¿Seguro que quieres terminar la compra?”** antes de escribir; con 0 marcados el aviso explica que se guardará vacía. | El cierre es irreversible y un toque accidental no debe cerrar la compra; la confirmación sustituye al antiguo modal sin añadir campos. | 01, 04, 05 |
+| D-59 | Teclado sobre el header nativo | **`KeyboardAvoidingView` descuenta la altura del header** con `useHeaderHeight`; el detalle de línea además desplaza el campo enfocado. | Sin ese descuento el padding se queda corto por la franja del header y el campo inferior sigue tapado. | 04, 05 |
 
 ## 6. Decisiones de proceso que ya están tomadas
 
@@ -162,6 +164,8 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-55 | 7 nov 2026 | Virtualizar los resultados del catálogo para familias grandes | Orquestador, derivado del reporte de lentitud |
 | D-56 | 8 nov 2026 | Supermercado opcional; compras nuevas con `NULL` y migración 003 que conserva las antiguas | Usuario |
 | D-57 | 8 nov 2026 | Búsqueda sin tildes y reintento en singular cuando el plural no devuelve nada | Usuario |
+| D-58 | 9 nov 2026 | Confirmación explícita antes de finalizar la compra, también con artículos marcados | Usuario |
+| D-59 | 9 nov 2026 | Descontar la altura del header nativo en el `KeyboardAvoidingView` y desplazar el campo enfocado | Usuario, derivado del reporte de teclado |
 | D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
 | D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |
