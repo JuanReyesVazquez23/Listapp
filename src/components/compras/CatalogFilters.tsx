@@ -4,7 +4,8 @@ import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
 import type { CatalogSort } from '@/domain/catalogResults';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface CatalogFiltersProps {
   brands: string[];
@@ -47,6 +48,7 @@ export function CatalogFilters({
   onSortChange,
   onClear,
 }: CatalogFiltersProps) {
+  const styles = useThemedStyles(createStyles);
   const hasActiveFilters =
     filterText.trim().length > 0 || brand !== null || sort !== 'relevance';
 
@@ -137,6 +139,8 @@ interface FilterChipProps {
 }
 
 function FilterChip({ label, selected, disabled, onPress }: FilterChipProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       accessibilityRole="radio"
@@ -160,52 +164,53 @@ function FilterChip({ label, selected, disabled, onPress }: FilterChipProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing[2],
-  },
-  count: {
-    color: colors.textSecondary,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
-  },
-  sortChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
-  chip: {
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[3],
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-  },
-  chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
-  },
-  chipLabel: {
-    color: colors.text,
-  },
-  chipLabelSelected: {
-    color: colors.primaryText,
-  },
-  clearButton: {
-    alignSelf: 'flex-start',
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[3],
-    borderRadius: radius.pill,
-    backgroundColor: colors.bgSubtle,
-  },
-  clearLabel: {
-    color: colors.primaryText,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      gap: spacing[2],
+    },
+    count: {
+      color: colors.textSecondary,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: spacing[2],
+    },
+    sortChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing[2],
+    },
+    chip: {
+      minHeight: 48,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[3],
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.controlBorder,
+    },
+    chipSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primarySoft,
+    },
+    chipLabel: {
+      color: colors.text,
+    },
+    chipLabelSelected: {
+      color: colors.primaryText,
+    },
+    clearButton: {
+      alignSelf: 'flex-start',
+      minHeight: 48,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[3],
+      borderRadius: radius.pill,
+      backgroundColor: colors.bgSubtle,
+    },
+    clearLabel: {
+      color: colors.primaryText,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+  });

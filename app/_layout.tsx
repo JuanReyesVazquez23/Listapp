@@ -7,14 +7,26 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BootErrorScreen } from '@/components/ui/BootErrorScreen';
 import { useDatabaseBoot } from '@/features/boot/useDatabaseBoot';
 import { es } from '@/strings/es';
-import { colors } from '@/theme/tokens';
+import { ThemeProvider } from '@/theme/ThemeProvider';
+import { useTheme } from '@/theme/themeContext';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {
   // El splash ya puede estar oculto en desarrollo.
 });
 
 export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function RootContent() {
   const { state, retry } = useDatabaseBoot();
+  const { colors, isDark } = useTheme();
   const settled = state.status !== 'booting';
 
   useEffect(() => {
@@ -27,7 +39,7 @@ export default function RootLayout() {
   }, [settled]);
 
   return (
-    <SafeAreaProvider>
+    <>
       {state.status === 'ready' ? (
         <Stack
           screenOptions={{
@@ -60,7 +72,7 @@ export default function RootLayout() {
       ) : state.status === 'failed' ? (
         <BootErrorScreen error={state.error} onRetry={retry} />
       ) : null}
-      <StatusBar style="dark" />
-    </SafeAreaProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </>
   );
 }

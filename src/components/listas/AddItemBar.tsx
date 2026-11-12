@@ -7,7 +7,8 @@ import { validateItemName } from '@/domain/validation';
 import { toUserMessage } from '@/lib/errorMessages';
 import { itemNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, typography, type ThemeColors } from '@/theme/tokens';
 
 interface AddItemBarProps {
   /** Recibe el nombre ya validado. Si falla, el mensaje se muestra aquí. */
@@ -23,6 +24,8 @@ interface AddItemBarProps {
  * validar porque es la frontera real de los datos.
  */
 export function AddItemBar({ onAdd, bottomInset = 0, autoFocus = false }: AddItemBarProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -101,52 +104,53 @@ export function AddItemBar({ onAdd, bottomInset = 0, autoFocus = false }: AddIte
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    backgroundColor: colors.surface,
-  },
-  label: {
-    color: colors.textSecondary,
-    marginBottom: spacing[1],
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing[3],
-    color: colors.text,
-    ...typography.body,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  button: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.disabledBg,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      backgroundColor: colors.surface,
+    },
+    label: {
+      color: colors.textSecondary,
+      marginBottom: spacing[1],
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    input: {
+      flex: 1,
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.controlBorder,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing[3],
+      color: colors.text,
+      ...typography.body,
+    },
+    inputError: {
+      borderColor: colors.danger,
+    },
+    button: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonPressed: {
+      backgroundColor: colors.primaryPressed,
+    },
+    buttonDisabled: {
+      backgroundColor: colors.disabledBg,
+    },
+    error: {
+      color: colors.danger,
+      marginTop: spacing[1],
+    },
+  });

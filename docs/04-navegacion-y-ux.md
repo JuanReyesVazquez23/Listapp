@@ -277,9 +277,9 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 ### 6.1 Identidad
 
 - **Nombre:** “Listapp”, una palabra, L mayúscula.
-- **Color:** verde funcional sobre blanco. El verde indica acción principal, progreso y compra activa; el blanco es el fondo dominante.
+- **Color:** verde funcional sobre blanco en el tema claro y sobre azul muy oscuro en el oscuro. El verde indica acción principal, progreso y compra activa.
 - **Tono:** cercano, directo, sin exclamaciones ni tecnicismos.
-- **Estilo:** superficies blancas, bordes finos, esquinas moderadas, sin gradientes ni glassmorphism. La jerarquía se construye con tamaño, peso y espacio.
+- **Estilo:** superficies limpias, bordes finos, esquinas moderadas, sin gradientes ni glassmorphism. La jerarquía se construye con tamaño, peso y espacio.
 - **Icono:** cesta blanca con check sobre fondo verde `#15803D`; icono adaptativo con zona segura y versión monocroma.
 - **Splash:** fondo verde, logo blanco; se oculta cuando `boot()` termina, sin retardo artificial.
 
@@ -331,6 +331,35 @@ No hay ciclos: cada ruta tiene un destino canónico único para cada estado.
 - Los bordes de inputs y checkboxes usan `controlBorder` (`neutral.500`), no `neutral.200`.
 - El color nunca es la única señal: check + tachado + texto “Comprado”.
 - Los ratios son cálculos WCAG; se validarán con una herramienta antes de congelar los tokens.
+
+**Tema oscuro:** los alias son los mismos; solo cambia su valor. Ningún componente escribe colores sueltos.
+
+| Alias | Oscuro | Uso |
+|---|---|---|
+| `bg` | `#0B1220` | Fondo principal |
+| `bgSubtle` | `#132A1E` | Pulsados y fondos teñidos |
+| `surface` | `#111C2E` | Tarjetas e inputs |
+| `text` | `#E6EDF7` | Texto principal |
+| `textSecondary` | `#A9B8CC` | Texto secundario |
+| `textMuted` | `#8B9CB3` | Metadatos y placeholder |
+| `border` | `#263548` | Divisores |
+| `controlBorder` | `#5F7590` | Bordes de controles |
+| `primary` | `#4ADE80` | Acción principal, progreso y foco |
+| `primaryPressed` | `#22C55E` | Primario pulsado |
+| `primarySoft` | `#15351F` | Fondo teñido |
+| `primaryText` | `#86EFAC` | Texto sobre fondo teñido |
+| `onPrimary` | `#052E16` | Texto e iconos sobre primario |
+| `danger` | `#F87171` | Errores y eliminar |
+| `dangerSoft` | `#3B1717` | Fondo de error |
+| `disabledBg` | `#1B2637` | Control deshabilitado |
+| `disabledText` | `#94A3B8` | Texto deshabilitado |
+
+**Comportamiento del tema:**
+
+- El toggle vive en el header de las tabs, se anuncia como interruptor y expone el modo actual en `accessibilityState.checked`.
+- Sin preferencia guardada se sigue el esquema del sistema; al usarlo, la elección se guarda en `expo-sqlite/kv-store` y deja de depender del sistema.
+- El tema se aplica a toda la interfaz propia: fondos, textos, headers, tabs, inputs, iconos, snackbars y estados.
+- Los diálogos nativos (`Alert`) y el teclado siguen el tema del sistema operativo, no el de la app.
 
 ### 6.3 Tipografía
 
@@ -438,7 +467,7 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 - Errores de formulario anunciados; no solo borde rojo.
 - Probado con TalkBack y con escala de fuente al 200 %.
 - “Reducir movimiento” respetado mediante `AccessibilityInfo.isReduceMotionEnabled`.
-- Modo claro con contraste AA; no se promete modo oscuro.
+- Los temas claro y oscuro mantienen contraste AA; el toggle no depende solo del icono, también de su etiqueta accesible.
 
 ### 7.2 Checklist manual
 
@@ -460,6 +489,7 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 | Contexto | Texto |
 |---|---|
 | Tabs | “Listas”, “Historial” |
+| Tema | “Activar tema oscuro”, “Activar tema claro” |
 | Portada | “Listas”, “Continuar compra”, “Nueva lista” |
 | Vacío de listas | “Aún no hay listas”, “Crea una para empezar tu próxima compra.”, “Crear mi primera lista” |
 | Nueva lista | “Nombre de la lista”, “Ej. Compra semanal”, “Crear” |
@@ -514,7 +544,7 @@ Fuente del sistema: Roboto en Android, San Francisco en iOS. Sin carga de fuente
 
 | Decisión | Elección |
 |---|---|
-| Tema | Claro; verde y blanco. Sin modo oscuro en el MVP. |
+| Tema | Claro y oscuro con toggle persistente en el header de las tabs; sin preferencia se sigue el sistema. |
 | Fuente | Sistema; sin fuentes custom. |
 | Iconos | Ionicons de `@expo/vector-icons`. |
 | Animación | `Animated` de RN; sin Reanimated. |

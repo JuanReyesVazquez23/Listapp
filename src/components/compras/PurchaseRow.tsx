@@ -7,7 +7,8 @@ import { formatHistoryRow } from '@/domain/dates';
 import type { ListSummary } from '@/domain/list';
 import { formatCents } from '@/domain/money';
 import { es } from '@/strings/es';
-import { colors, layout, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { layout, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface PurchaseRowProps {
   purchase: ListSummary;
@@ -19,6 +20,8 @@ interface PurchaseRowProps {
  * antigua lo tiene) y progreso en una sola línea táctil.
  */
 export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const dateLabel = formatHistoryRow(
     purchase.completedLocalDate ?? '',
     purchase.completedLocalTime ?? '',
@@ -78,34 +81,35 @@ export function PurchaseRow({ purchase, onPress }: PurchaseRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    minHeight: layout.itemRowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  pressed: {
-    backgroundColor: colors.bgSubtle,
-  },
-  content: {
-    flex: 1,
-    gap: spacing[1],
-  },
-  date: {
-    color: colors.textMuted,
-  },
-  supermarket: {
-    color: colors.text,
-  },
-  progress: {
-    color: colors.textSecondary,
-  },
-  catalog: {
-    marginTop: spacing[1],
-    gap: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      minHeight: layout.itemRowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
+      paddingVertical: spacing[3],
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pressed: {
+      backgroundColor: colors.bgSubtle,
+    },
+    content: {
+      flex: 1,
+      gap: spacing[1],
+    },
+    date: {
+      color: colors.textMuted,
+    },
+    supermarket: {
+      color: colors.text,
+    },
+    progress: {
+      color: colors.textSecondary,
+    },
+    catalog: {
+      marginTop: spacing[1],
+      gap: spacing[1],
+    },
+  });

@@ -7,7 +7,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatMonthGroup, monthKey } from '@/domain/dates';
 import type { ListSummary } from '@/domain/list';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 
 interface HistoryListProps {
   purchases: ListSummary[];
@@ -59,6 +60,7 @@ export function HistoryList({
   onOpenPurchase,
   onGoToLists,
 }: HistoryListProps) {
+  const styles = useThemedStyles(createStyles);
   const sections = useMemo(() => groupByMonth(purchases), [purchases]);
 
   if (purchases.length === 0) {
@@ -94,19 +96,20 @@ export function HistoryList({
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    paddingBottom: spacing[8],
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    backgroundColor: colors.bg,
-    paddingTop: spacing[4],
-    paddingBottom: spacing[1],
-  },
-  empty: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: spacing[6],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    content: {
+      paddingBottom: spacing[8],
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      backgroundColor: colors.bg,
+      paddingTop: spacing[4],
+      paddingBottom: spacing[1],
+    },
+    empty: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingVertical: spacing[6],
+    },
+  });

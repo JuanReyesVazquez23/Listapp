@@ -16,7 +16,8 @@ import { shoppingGuard } from '@/domain/navigation';
 import { useItemDetail } from '@/features/listas/hooks/useItemDetail';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 
 /**
  * Detalle de una línea de la compra con La Sirena.
@@ -27,6 +28,8 @@ import { colors, spacing } from '@/theme/tokens';
  * disponible si no hay red.
  */
 export default function ItemDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ id?: string | string[]; itemId?: string | string[] }>();
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const itemId = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
@@ -200,14 +203,15 @@ export default function ItemDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    flex: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[4],
+    },
+  });

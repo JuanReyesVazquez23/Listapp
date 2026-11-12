@@ -42,7 +42,7 @@ Alrededor de eso:
 | Base de datos | **SQLite + `expo-sqlite`** | Drizzle, Prisma, WatermelonDB, Realm | Solo dos tablas y un escritor; un ORM añade codegen y capas que no resuelven nada aquí. |
 | Acceso a datos | **Puerto SQL + repositorios + cola serial** | `SQLiteProvider` + helpers de transacción | Control explícito de transacciones, PRAGMAs y recuperación. |
 | Estado | **Estado local de pantalla + SQLite** | Zustand, Redux, TanStack Query | No hay estado compartido complejo; la cola resuelve la coherencia temporal. |
-| Estilo | **StyleSheet + tokens TypeScript** | NativeWind/Tailwind | Sin plugin de Babel ni runtime extra; control total de accesibilidad. |
+| Estilo | **StyleSheet + tokens TypeScript por tema** | NativeWind/Tailwind | Sin plugin de Babel ni runtime extra; control total de accesibilidad y del cambio claro/oscuro. |
 | Animación | **`Animated` de React Native** | Reanimated, GSAP, Framer Motion, Lottie | Solo se animan transform/opacity; Reanimated añadiría Worklets y configuración nativa. |
 | Fuente | **Fuente del sistema** | Inter/Poppins/Manrope custom | Sin parpadeo, sin peso extra, respeta Dynamic Type. |
 | Iconos | **`@expo/vector-icons` (Ionicons)** | Librería SVG adicional | Ya viene con Expo; sin assets remotos. |
@@ -109,7 +109,7 @@ flowchart TD
 | `src/domain` | Tipos, estados, reglas puras, validadores, progreso, formato de fechas y de dinero. | Efectos secundarios, React, SQL, red. |
 | `src/infrastructure` | Conexión, PRAGMAs, migraciones, cola, repositorios, mapeo de filas y cliente del catálogo. | Reglas de UI. |
 | `src/lib` | `Clock`, generador de IDs, errores, hápticos, instrumentación. | Lógica de negocio. |
-| `src/theme` | Tokens de color, tipografía, espaciado, radios. | Componentes. |
+| `src/theme` | Tokens claro/oscuro, `ThemeProvider`, contexto y hooks de tema, tipografía, espaciado y radios. | Componentes. |
 | `src/strings` | Todos los textos visibles en español. | Lógica. |
 
 ## 5. Estructura de carpetas
@@ -164,7 +164,7 @@ listapp/
       migrations/002_item_details.ts
       migrations/003_optional_supermarket.ts
       repositories/              # listsRepository, itemsRepository
-    theme/                       # tokens, typography
+    theme/                       # tokens claro/oscuro, ThemeProvider, useTheme
     strings/es.ts                # textos visibles
     lib/                         # clock, ids, errors, haptics, perf, config
   tests/
@@ -391,7 +391,7 @@ Los casos de uso lanzan `AppError` con un código estable. La UI traduce el cód
 | `expo-crypto` | UUID v4 para listas e ítems. |
 | `expo-haptics` | Feedback ligero al marcar y al finalizar. |
 | `expo-splash-screen` | Splash nativo hasta que `boot()` termina. |
-| `expo-status-bar` | Barra de estado coherente con el tema claro. |
+| `expo-status-bar` | Barra de estado coherente con el tema activo. |
 | `@expo/vector-icons` | Iconos Ionicons. |
 | `react-native-screens` | Pantallas nativas del stack. |
 | `react-native-safe-area-context` | Safe areas y edge-to-edge. |
@@ -439,7 +439,7 @@ Las versiones se fijan con `npx expo install` para que coincidan con SDK 58. Las
 | `scheme` | listapp |
 | `version` | 1.0.0 |
 | `orientation` | `portrait` |
-| `userInterfaceStyle` | `light` |
+| `userInterfaceStyle` | `automatic` |
 | `android.package` | `com.jeanx.listapp` (confirmado; D-01) |
 | `android.versionCode` | 1 |
 | `android.allowBackup` | `false` |
@@ -453,6 +453,8 @@ El layout raíz:
 - mantiene el splash hasta que `boot()` termina;
 - muestra una pantalla de error si `boot()` falla;
 - monta el `Stack` raíz con las tabs y las rutas modales;
+- envuelve la app en `ThemeProvider`, que resuelve el modo guardado o el del sistema y expone `useTheme()`/`useThemedStyles()`;
+- deja que las tabs muestren el toggle claro/oscuro en su header;
 - define un error boundary de ruta.
 
 No se usa `SQLiteProvider`: el ciclo de vida lo controla `DatabaseManager`, para poder hacer boot gate y cerrar la conexión en caso de error.
@@ -567,3 +569,4 @@ El primer build se hace al cerrar **M3**, cuando ya existe el flujo completo de 
 | A21 | Detalle de línea en columnas de `items` con migración 002; sin tabla `item_details`. | Aceptada |
 | A22 | Sugerencias automáticas al abrir el detalle; el buscador solo corrige la consulta (D-52). | Aceptada |
 | A23 | Búsqueda de catálogo insensible a tildes y con reintento en singular si el plural no devuelve nada. | Aceptada |
+| A24 | Tema claro/oscuro con toggle persistente en `expo-sqlite/kv-store`; sin librería de temas. | Aceptada |

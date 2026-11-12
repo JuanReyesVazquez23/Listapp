@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface SnackbarProps {
   message: string;
@@ -21,6 +22,9 @@ export function Snackbar({
   dismissLabel,
   bottom,
 }: SnackbarProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View
       accessibilityRole="alert"
@@ -56,42 +60,43 @@ export function Snackbar({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    position: 'absolute',
-    left: spacing[4],
-    right: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: colors.text,
-    borderRadius: radius.md,
-    paddingVertical: spacing[3],
-    paddingLeft: spacing[4],
-    paddingRight: spacing[2],
-    elevation: 4,
-  },
-  message: {
-    flex: 1,
-    color: colors.onPrimary,
-  },
-  action: {
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[2],
-    borderRadius: radius.sm,
-  },
-  actionPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  actionLabel: {
-    color: colors.primarySoft,
-  },
-  close: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    root: {
+      position: 'absolute',
+      left: spacing[4],
+      right: spacing[4],
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      backgroundColor: colors.text,
+      borderRadius: radius.md,
+      paddingVertical: spacing[3],
+      paddingLeft: spacing[4],
+      paddingRight: spacing[2],
+      elevation: 4,
+    },
+    message: {
+      flex: 1,
+      color: colors.onPrimary,
+    },
+    action: {
+      minHeight: 40,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[2],
+      borderRadius: radius.sm,
+    },
+    actionPressed: {
+      backgroundColor: colors.primaryPressed,
+    },
+    actionLabel: {
+      color: colors.primarySoft,
+    },
+    close: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.pill,
+    },
+  });

@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import type { ListStatus } from '@/domain/list';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface StatusBadgeProps {
   status: ListStatus;
@@ -11,6 +12,7 @@ interface StatusBadgeProps {
 
 /** Etiqueta de estado de la lista; el color solo refuerza, nunca sustituye al texto. */
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const styles = useThemedStyles(createStyles);
   const isShopping = status === 'shopping';
 
   return (
@@ -25,26 +27,27 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 2,
-  },
-  shopping: {
-    backgroundColor: colors.primarySoft,
-  },
-  neutral: {
-    backgroundColor: colors.bgSubtle,
-  },
-  label: {
-    fontWeight: '600',
-  },
-  shoppingLabel: {
-    color: colors.primaryText,
-  },
-  neutralLabel: {
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    badge: {
+      alignSelf: 'flex-start',
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing[2],
+      paddingVertical: 2,
+    },
+    shopping: {
+      backgroundColor: colors.primarySoft,
+    },
+    neutral: {
+      backgroundColor: colors.bgSubtle,
+    },
+    label: {
+      fontWeight: '600',
+    },
+    shoppingLabel: {
+      color: colors.primaryText,
+    },
+    neutralLabel: {
+      color: colors.textSecondary,
+    },
+  });

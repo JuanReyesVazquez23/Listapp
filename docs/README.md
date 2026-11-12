@@ -1,6 +1,6 @@
 # Listapp — Documentación de arquitectura
 
-**Fase 1: implementación en curso. M0 (base y SQLite), M1 (listas y artículos) y M2 (modo compra) completados; el primer APK llega al cerrar M3.**
+**Fase 1: implementación en curso. M0 (base y SQLite), M1 (listas y artículos), M2 (modo compra) y M3 (cierre e historial) completados; APK `preview` disponible en EAS.**
 
 Esta documentación define qué se va a construir, cómo se organiza, qué datos guarda, cómo se navega, cómo se prueba y cómo se entrega el APK. Es la base para empezar a implementar sin improvisar decisiones estructurales.
 
@@ -23,7 +23,7 @@ Esta documentación define qué se va a construir, cómo se organiza, qué datos
 - **Arquitectura:** Expo Router + TypeScript + SQLite local; sin ORM, sin store global, sin nube.
 - **Datos:** dos tablas (`lists` e `items`); una lista completada es la compra histórica.
 - **Consistencia:** una conexión SQLite, cola serial para todas las operaciones y transacciones explícitas.
-- **Diseño:** verde y blanco, tema claro, componentes propios, fuente del sistema, accesibilidad AA.
+- **Diseño:** verde y blanco, temas claro y oscuro con toggle persistente, componentes propios, fuente del sistema, accesibilidad AA.
 - **Entrega:** primer APK al cerrar M3; APK final tras pruebas manuales y E2E.
 
 ## Cómo se tomó la decisión

@@ -1,10 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
+import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { es } from '@/strings/es';
-import { colors, typography } from '@/theme/tokens';
+import { useTheme } from '@/theme/themeContext';
+import { typography } from '@/theme/tokens';
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
@@ -12,6 +16,7 @@ export default function TabsLayout() {
         headerShadowVisible: false,
         headerTintColor: colors.text,
         headerTitleStyle: { fontSize: 20, fontWeight: '600' },
+        headerRight: () => <ThemeToggleButton />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {

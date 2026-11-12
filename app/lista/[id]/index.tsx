@@ -30,7 +30,8 @@ import { isAppError } from '@/lib/errors';
 import { toUserMessage } from '@/lib/errorMessages';
 import { listNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 import { appDeps } from '@/useCases/deps';
 import { addItem, deleteItem, renameItem, restoreItem } from '@/useCases/items';
 import { deleteList, getListsOverview, renameList } from '@/useCases/lists';
@@ -43,6 +44,8 @@ interface Snack {
 }
 
 export default function ListDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { status, detail, error, reload } = useListDetail(listId);
@@ -509,83 +512,84 @@ export default function ListDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    paddingHorizontal: 0,
-  },
-  flex: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[6],
-  },
-  header: {
-    paddingTop: spacing[4],
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-  },
-  title: {
-    flex: 1,
-    color: colors.text,
-  },
-  count: {
-    color: colors.textMuted,
-    marginTop: spacing[1],
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginTop: spacing[2],
-  },
-  notice: {
-    flex: 1,
-    color: colors.textMuted,
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    marginTop: spacing[6],
-    marginBottom: spacing[1],
-  },
-  renameRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[1],
-  },
-  renameField: {
-    flex: 1,
-  },
-  empty: {
-    paddingVertical: spacing[8],
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    color: colors.text,
-    textAlign: 'center',
-  },
-  emptyBody: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-  },
-  primaryAction: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    backgroundColor: colors.surface,
-  },
-  primaryHint: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      paddingHorizontal: 0,
+    },
+    flex: {
+      flex: 1,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[4],
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[6],
+    },
+    header: {
+      paddingTop: spacing[4],
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing[2],
+    },
+    title: {
+      flex: 1,
+      color: colors.text,
+    },
+    count: {
+      color: colors.textMuted,
+      marginTop: spacing[1],
+    },
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      marginTop: spacing[2],
+    },
+    notice: {
+      flex: 1,
+      color: colors.textMuted,
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      marginTop: spacing[6],
+      marginBottom: spacing[1],
+    },
+    renameRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing[1],
+    },
+    renameField: {
+      flex: 1,
+    },
+    empty: {
+      paddingVertical: spacing[8],
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      color: colors.text,
+      textAlign: 'center',
+    },
+    emptyBody: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+    },
+    primaryAction: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[3],
+      backgroundColor: colors.surface,
+    },
+    primaryHint: {
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: spacing[1],
+    },
+  });

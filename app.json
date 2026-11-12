@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "listapp",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.jeanx.listapp",
       "versionCode": 3,

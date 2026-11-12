@@ -45,7 +45,8 @@ import {
 import type { CatalogState } from '@/features/listas/hooks/useItemDetail';
 import { itemDetailErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface ItemDetailFormProps {
   item: ShoppingItem;
@@ -104,6 +105,8 @@ export function ItemDetailForm({
   onRemoveData,
   onRemoveFromPurchase,
 }: ItemDetailFormProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const initial = item.detail;
   const [draft, setDraft] = useState<ItemDetailDraft>(() => ({
     brand: initial?.brand ?? '',
@@ -573,6 +576,8 @@ export function ItemDetailForm({
 }
 
 function CatalogSeparator() {
+  const styles = useThemedStyles(createStyles);
+
   return <View style={styles.separator} />;
 }
 
@@ -593,6 +598,7 @@ const CatalogResultRow = memo(function CatalogResultRow({
   disabled,
   onSelect,
 }: CatalogResultRowProps) {
+  const styles = useThemedStyles(createStyles);
   const { product, measure } = entry;
   const [imageFailed, setImageFailed] = useState(false);
   const imageUri = imageFailed ? null : product.imageUrl;
@@ -684,6 +690,8 @@ interface UnitChipProps {
 }
 
 function UnitChip({ unit, selected, disabled, onPress }: UnitChipProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       accessibilityRole="radio"
@@ -724,9 +732,10 @@ function catalogErrorMessage(reason: string): string {
   }
 }
 
-const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: spacing[4],
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    content: {
+      paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[10],
   },

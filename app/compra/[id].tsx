@@ -23,7 +23,8 @@ import { splitPurchaseItems } from '@/domain/purchase';
 import { usePurchaseDetail } from '@/features/listas/hooks/usePurchaseDetail';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 
 interface PurchaseSection {
   key: string;
@@ -32,6 +33,8 @@ interface PurchaseSection {
 }
 
 export default function PurchaseDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const {
@@ -206,39 +209,40 @@ export default function PurchaseDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    paddingHorizontal: spacing[4],
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  content: {
-    paddingBottom: spacing[8],
-  },
-  header: {
-    paddingTop: spacing[4],
-    paddingBottom: spacing[2],
-  },
-  title: {
-    color: colors.text,
-  },
-  date: {
-    color: colors.textSecondary,
-    marginTop: spacing[1],
-  },
-  summary: {
-    color: colors.textSecondary,
-    marginTop: spacing[2],
-  },
-  catalog: {
-    marginTop: spacing[2],
-    gap: spacing[1],
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    marginTop: spacing[4],
-    marginBottom: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      paddingHorizontal: spacing[4],
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    content: {
+      paddingBottom: spacing[8],
+    },
+    header: {
+      paddingTop: spacing[4],
+      paddingBottom: spacing[2],
+    },
+    title: {
+      color: colors.text,
+    },
+    date: {
+      color: colors.textSecondary,
+      marginTop: spacing[1],
+    },
+    summary: {
+      color: colors.textSecondary,
+      marginTop: spacing[2],
+    },
+    catalog: {
+      marginTop: spacing[2],
+      gap: spacing[1],
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      marginTop: spacing[4],
+      marginBottom: spacing[1],
+    },
+  });

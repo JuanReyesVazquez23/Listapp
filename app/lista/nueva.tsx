@@ -16,11 +16,13 @@ import { validateListName } from '@/domain/validation';
 import { toUserMessage } from '@/lib/errorMessages';
 import { listNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 import { appDeps } from '@/useCases/deps';
 import { createList } from '@/useCases/lists';
 
 export default function NewListScreen() {
+  const styles = useThemedStyles(createStyles);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -101,24 +103,25 @@ export default function NewListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    paddingTop: spacing[4],
-    paddingBottom: spacing[8],
-    gap: spacing[4],
-  },
-  cancelRow: {
-    alignItems: 'center',
-  },
-  cancel: {
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-  cancelLabel: {
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
+    content: {
+      paddingTop: spacing[4],
+      paddingBottom: spacing[8],
+      gap: spacing[4],
+    },
+    cancelRow: {
+      alignItems: 'center',
+    },
+    cancel: {
+      minHeight: 48,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[4],
+    },
+    cancelLabel: {
+      color: colors.textSecondary,
+    },
+  });

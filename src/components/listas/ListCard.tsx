@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface ListCardProps {
   name: string;
@@ -21,6 +22,9 @@ export function ListCard({
   trailingLabel,
   highlighted = false,
 }: ListCardProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,50 +70,51 @@ export function ListCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.surface,
-    marginBottom: spacing[3],
-  },
-  highlighted: {
-    borderColor: colors.primary,
-    backgroundColor: colors.bgSubtle,
-  },
-  pressed: {
-    backgroundColor: colors.primarySoft,
-  },
-  content: {
-    flex: 1,
-    gap: spacing[1],
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 2,
-    backgroundColor: colors.primarySoft,
-  },
-  badgeLabel: {
-    color: colors.primaryText,
-    fontWeight: '600',
-  },
-  name: {
-    color: colors.text,
-  },
-  metadata: {
-    color: colors.textMuted,
-  },
-  trailing: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      minHeight: 64,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      backgroundColor: colors.surface,
+      marginBottom: spacing[3],
+    },
+    highlighted: {
+      borderColor: colors.primary,
+      backgroundColor: colors.bgSubtle,
+    },
+    pressed: {
+      backgroundColor: colors.primarySoft,
+    },
+    content: {
+      flex: 1,
+      gap: spacing[1],
+    },
+    badge: {
+      alignSelf: 'flex-start',
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing[2],
+      paddingVertical: 2,
+      backgroundColor: colors.primarySoft,
+    },
+    badgeLabel: {
+      color: colors.primaryText,
+      fontWeight: '600',
+    },
+    name: {
+      color: colors.text,
+    },
+    metadata: {
+      color: colors.textMuted,
+    },
+    trailing: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  });

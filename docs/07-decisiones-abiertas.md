@@ -52,13 +52,13 @@ Cada fila indica qué documento habría que cambiar si eliges otra cosa.
 | ID | Función | Decisión | Motivo | Doc |
 |---|---|---|---|---|
 | D-16 | Backup/export/import | **No en v1.0.** `allowBackup=false`. Export JSON en v1.1. | El requisito es local/offline, no backup. Aceptar que desinstalar borra los datos debe ser explícito. | 01, 02, 03, 05 |
-| D-17 | Modo oscuro | **No.** Tema claro verde/blanco. | Duplica tokens y pruebas; no se pidió. | 01, 04 |
+| D-17 | Modo oscuro | **Derogada por D-60.** Tema claro y oscuro con toggle persistente. | El usuario lo pidió; se resolvió con tokens duales, `ThemeProvider` y una prueba de componente, sin librerías nuevas. | 01, 02, 04, 05 |
 | D-18 | iOS | **No se valida.** Solo Android y APK. | El entregable es un APK; iOS exigiría otro build y otra campaña de pruebas. | 01, 05 |
 | D-19 | Idioma | **Solo español neutro**, sin selector. | Un solo usuario y un solo idioma; i18n añade archivos y pruebas. | 01, 04 |
 | D-20 | Historial paginado | **No.** Se cargan todas las compras y se virtualizan con `SectionList`. | El volumen esperado es bajo; paginar añade estados y pruebas. | 01, 02, 03 |
 | D-21 | Búsqueda y filtros de historial | **No.** | No se pidió; el historial se agrupa por mes y se ordena por fecha. | 01, 03 |
 | D-22 | Listas recurrentes, plantillas o “repetir compra” | **No.** Duplicar una compra queda para v1.1. | Añade un flujo completo y decisiones de copia de checks. | 01, 03 |
-| D-23 | Pantalla de ajustes | **No en el MVP.** | No hay preferencias que configurar; todo es automático. Si se añade, será para export/import en v1.1. | 04 |
+| D-23 | Pantalla de ajustes | **No en el MVP.** El tema se cambia desde el header de las tabs; no hay otras preferencias. | Un ajuste de tema no justifica una pantalla completa. Si se añade, será para export/import en v1.1. | 04 |
 | D-24 | Precios, ofertas, código de barras, voz, OCR, compartir, recordatorios | **Precios solo en modo La Sirena (D-33).** Ofertas, comparación entre tiendas, código de barras, voz, OCR, compartir y recordatorios siguen fuera. | El usuario pidió precio y total; comparar tiendas u ofertas es otro producto. | 01 |
 | D-25 | Cifrado SQLCipher, analítica, crash reporting, OTA | **No.** Hay una consulta de red opcional (catálogo), sin analítica ni reporte de crashes. | El cifrado no cambia: los datos siguen en el dispositivo. La red es una ayuda, no una dependencia. | 01, 02 |
 
@@ -166,6 +166,7 @@ Cuando confirmes, este documento se convierte en el registro. Cada decisión cer
 | D-57 | 8 nov 2026 | Búsqueda sin tildes y reintento en singular cuando el plural no devuelve nada | Usuario |
 | D-58 | 9 nov 2026 | Confirmación explícita antes de finalizar la compra, también con artículos marcados | Usuario |
 | D-59 | 9 nov 2026 | Descontar la altura del header nativo en el `KeyboardAvoidingView` y desplazar el campo enfocado | Usuario, derivado del reporte de teclado |
+| D-60 | 12 nov 2026 | Tema claro/oscuro con toggle persistente en el header de las tabs; sin preferencia guardada se sigue el esquema del sistema | Usuario |
 | D-39 | 31 oct 2026 | Fuente VTEX pública de `sirena.do`, normalizada y con timeout | Orquestador, verificado con petición real |
 | D-40 | 31 oct 2026 | Subtotal por línea y total de compra guardados al finalizar | Orquestador, derivado de AC-25 y AC-27 |
 | … | — | — | — |

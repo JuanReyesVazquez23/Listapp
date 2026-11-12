@@ -6,7 +6,8 @@ import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { isAppError } from '@/lib/errors';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface BootErrorScreenProps {
   error: unknown;
@@ -20,6 +21,8 @@ interface ErrorContent {
 }
 
 export function BootErrorScreen({ error, onRetry }: BootErrorScreenProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const content = describeBootError(error);
 
   return (
@@ -85,38 +88,39 @@ function describeBootError(error: unknown): ErrorContent {
   }
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  root: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing[6],
-  },
-  iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.pill,
-    backgroundColor: colors.dangerSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[5],
-  },
-  title: {
-    color: colors.text,
-    textAlign: 'center',
-  },
-  body: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-    maxWidth: 340,
-  },
-  action: {
-    alignSelf: 'stretch',
-    marginTop: spacing[6],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    root: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing[6],
+    },
+    iconCircle: {
+      width: 88,
+      height: 88,
+      borderRadius: radius.pill,
+      backgroundColor: colors.dangerSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing[5],
+    },
+    title: {
+      color: colors.text,
+      textAlign: 'center',
+    },
+    body: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+      maxWidth: 340,
+    },
+    action: {
+      alignSelf: 'stretch',
+      marginTop: spacing[6],
+    },
+  });

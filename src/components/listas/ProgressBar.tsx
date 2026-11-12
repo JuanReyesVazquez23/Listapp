@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import type { Progress } from '@/domain/progress';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface ProgressBarProps {
   progress: Progress;
@@ -17,6 +18,8 @@ interface ProgressBarProps {
  * "7 de 12, 58 %".
  */
 export function ProgressBar({ progress }: ProgressBarProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View
       accessible
@@ -50,34 +53,35 @@ export function ProgressBar({ progress }: ProgressBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing[2],
-  },
-  track: {
-    height: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    width: '100%',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    transformOrigin: 'left',
-  },
-  labels: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  count: {
-    color: colors.text,
-    fontVariant: ['tabular-nums'],
-  },
-  percentage: {
-    color: colors.textSecondary,
-    fontVariant: ['tabular-nums'],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      gap: spacing[2],
+    },
+    track: {
+      height: 8,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primarySoft,
+      overflow: 'hidden',
+    },
+    fill: {
+      height: '100%',
+      width: '100%',
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      transformOrigin: 'left',
+    },
+    labels: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    count: {
+      color: colors.text,
+      fontVariant: ['tabular-nums'],
+    },
+    percentage: {
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+  });

@@ -6,9 +6,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Screen } from '@/components/ui/Screen';
 import { useHistory } from '@/features/listas/hooks/useHistory';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme } from '@/theme/themeContext';
+import { spacing } from '@/theme/tokens';
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
   const { status, entries, error, reload } = useHistory();
 
   if (status === 'loading') {

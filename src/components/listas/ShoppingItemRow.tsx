@@ -6,7 +6,8 @@ import { AppText } from '@/components/ui/AppText';
 import type { ShoppingItem } from '@/domain/item';
 import { es } from '@/strings/es';
 import { itemDetailText } from '@/lib/itemDetailText';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface ShoppingItemRowProps {
   item: ShoppingItem;
@@ -32,6 +33,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
   catalogMode = false,
   onOpenDetail,
 }: ShoppingItemRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const opensDetail = catalogMode && onOpenDetail !== undefined;
   const detail = item.detail;
   const detailText = itemDetailText(detail);
@@ -102,53 +105,54 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
   );
 });
 
-const styles = StyleSheet.create({
-  row: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  pressed: {
-    backgroundColor: colors.bgSubtle,
-  },
-  pending: {
-    opacity: 0.6,
-  },
-  checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: colors.controlBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  checkboxChecked: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  textArea: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  name: {
-    color: colors.text,
-  },
-  nameChecked: {
-    color: colors.textSecondary,
-    textDecorationLine: 'line-through',
-  },
-  tag: {
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  detail: {
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      minHeight: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
+      paddingVertical: spacing[3],
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pressed: {
+      backgroundColor: colors.bgSubtle,
+    },
+    pending: {
+      opacity: 0.6,
+    },
+    checkbox: {
+      width: 28,
+      height: 28,
+      borderRadius: radius.pill,
+      borderWidth: 2,
+      borderColor: colors.controlBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    checkboxChecked: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    textArea: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    name: {
+      color: colors.text,
+    },
+    nameChecked: {
+      color: colors.textSecondary,
+      textDecorationLine: 'line-through',
+    },
+    tag: {
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    detail: {
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+  });

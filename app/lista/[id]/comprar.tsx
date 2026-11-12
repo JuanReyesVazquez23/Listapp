@@ -31,9 +31,12 @@ import { buildFinishConfirmation } from '@/features/listas/finishConfirmation';
 import { applyGuard } from '@/features/navigation/applyGuard';
 import { toUserMessage } from '@/lib/errorMessages';
 import { es } from '@/strings/es';
-import { colors, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { spacing, type ThemeColors } from '@/theme/tokens';
 
 export default function ShoppingScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const listId = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
@@ -314,56 +317,57 @@ export default function ShoppingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    paddingHorizontal: 0,
-  },
-  flex: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[6],
-  },
-  header: {
-    paddingTop: spacing[4],
-    paddingBottom: spacing[3],
-  },
-  title: {
-    color: colors.text,
-  },
-  hint: {
-    color: colors.textMuted,
-    marginTop: spacing[1],
-  },
-  progress: {
-    marginTop: spacing[4],
-  },
-  catalogChip: {
-    marginTop: spacing[2],
-  },
-  primaryAction: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    backgroundColor: colors.surface,
-  },
-  empty: {
-    paddingVertical: spacing[8],
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    color: colors.text,
-    textAlign: 'center',
-  },
-  emptyBody: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      paddingHorizontal: 0,
+    },
+    flex: {
+      flex: 1,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing[4],
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[6],
+    },
+    header: {
+      paddingTop: spacing[4],
+      paddingBottom: spacing[3],
+    },
+    title: {
+      color: colors.text,
+    },
+    hint: {
+      color: colors.textMuted,
+      marginTop: spacing[1],
+    },
+    progress: {
+      marginTop: spacing[4],
+    },
+    catalogChip: {
+      marginTop: spacing[2],
+    },
+    primaryAction: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[3],
+      backgroundColor: colors.surface,
+    },
+    empty: {
+      paddingVertical: spacing[8],
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      color: colors.text,
+      textAlign: 'center',
+    },
+    emptyBody: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+    },
+  });

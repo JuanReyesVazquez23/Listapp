@@ -70,7 +70,7 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 | Detalle histórico | Todos los artículos separados en “Comprados” y “Sin comprar”; solo lectura. |
 | Eliminar compra | Confirmación; borra la compra y sus artículos. |
 | Offline | Todo el flujo funciona en modo avión. La consulta a La Sirena es opcional: si falla o no hay red, se sigue marcando a mano y el total se calcula con los datos introducidos. |
-| Identidad | Verde y blanco, tema claro, español, Android vertical. |
+| Identidad | Verde y blanco, temas claro y oscuro, español, Android vertical. |
 | Entrega | APK instalable generado con EAS Build. |
 
 ### 4.2 Fuera de alcance (v1.1 o nunca)
@@ -81,7 +81,7 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 - Código de barras, OCR, voz, recetas e importación de listas.
 - Catálogo propio de supermercados, geolocalización e historial de precios en el tiempo.
 - Recordatorios, notificaciones, compartir y widgets.
-- Modo oscuro, tablet, landscape y validación en iOS.
+- Tablet, landscape y validación en iOS.
 - Export/import, backup propio, búsqueda y filtros de historial.
 - Listas recurrentes, plantillas, duplicar una compra y “repetir lista”.
 - Cifrado SQLCipher, analítica, crash reporting y OTA updates.
@@ -101,7 +101,7 @@ La app es local, rápida y predecible. No pretende ser una red social, un compar
 | ¿Se puede borrar el último artículo en compra? | **No** | Evita una compra vacía; para vaciar, se cancela y se edita el borrador. |
 | ¿Historial paginado? | **No en el MVP** | Se carga todo y se virtualiza con `SectionList`; se añadirá si el volumen lo exige. |
 | ¿Backup? | **No en el MVP** | `allowBackup=false`; export JSON en v1.1. Desinstalar borra los datos. |
-| ¿Modo oscuro? | **No en el MVP** | Tema claro verde/blanco; los tokens quedan preparados. |
+| ¿Modo oscuro? | **Sí, con un toggle persistente** | Sigue el esquema del sistema hasta que el usuario elige; la preferencia se guarda en el almacén local y se aplica a toda la interfaz. |
 | ¿Precios en la compra normal? | **No.** Solo en modo La Sirena. | Pedir precio siempre convierte una lista de la compra en una caja registradora y rompe la promesa de “marcar en un toque”. |
 | ¿El precio es obligatorio? | **No.** El formulario se puede omitir. | Si el precio bloquea, el usuario deja de marcar con prisa; el total muestra cuántos artículos quedaron sin precio. |
 | ¿Precio por unidad o total de la línea? | **Por unidad/libra**, con subtotal calculado en vivo. | Es el dato que se ve en el estante y permite comprobar la cuenta; el total de la línea se guarda calculado para evitar redondeos distintos al releer. |

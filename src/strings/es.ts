@@ -17,6 +17,11 @@ export const es = {
     close: 'Cerrar',
     backToLists: 'Volver a Listas',
   },
+  theme: {
+    toggle: 'Cambiar tema',
+    toDark: 'Activar tema oscuro',
+    toLight: 'Activar tema claro',
+  },
   lists: {
     emptyTitle: 'Aún no hay listas',
     emptyBody: 'Crea una para empezar tu próxima compra.',

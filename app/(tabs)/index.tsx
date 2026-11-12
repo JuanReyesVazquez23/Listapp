@@ -15,9 +15,12 @@ import { Screen } from '@/components/ui/Screen';
 import { toLocalDateString, formatShortDate } from '@/domain/dates';
 import { useLists } from '@/features/listas/hooks/useLists';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 export default function ListsScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const { overview, loading, error, reload } = useLists();
 
   const hasLists =
@@ -117,37 +120,38 @@ export default function ListsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingTop: spacing[4],
-    paddingBottom: 104,
-  },
-  section: {
-    marginBottom: spacing[5],
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    marginBottom: spacing[1],
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing[4],
-    bottom: spacing[6],
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-  },
-  fabPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    content: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingTop: spacing[4],
+      paddingBottom: 104,
+    },
+    section: {
+      marginBottom: spacing[5],
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      marginBottom: spacing[1],
+    },
+    fab: {
+      position: 'absolute',
+      right: spacing[4],
+      bottom: spacing[6],
+      width: 56,
+      height: 56,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      elevation: 4,
+    },
+    fabPressed: {
+      backgroundColor: colors.primaryPressed,
+    },
+  });

@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { formatCents } from '@/domain/money';
 import { es } from '@/strings/es';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface PurchaseTotalRowProps {
   totalCents: number | null;
@@ -21,6 +22,8 @@ export function PurchaseTotalRow({
   totalCents,
   unpricedCount,
 }: PurchaseTotalRowProps) {
+  const styles = useThemedStyles(createStyles);
+
   if (totalCents === null && unpricedCount === 0) {
     return null;
   }
@@ -61,6 +64,8 @@ export function PurchaseTotalRow({
 
 /** Marca discreta del modo catálogo; la compra normal no la muestra (D-51). */
 export function CatalogChip() {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View
       accessible
@@ -75,25 +80,26 @@ export function CatalogChip() {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    gap: 2,
-    paddingVertical: spacing[2],
-  },
-  label: {
-    color: colors.text,
-  },
-  detail: {
-    color: colors.textSecondary,
-  },
-  chip: {
-    alignSelf: 'flex-start',
-    paddingVertical: 2,
-    paddingHorizontal: spacing[2],
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-  },
-  chipLabel: {
-    color: colors.primaryText,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      gap: 2,
+      paddingVertical: spacing[2],
+    },
+    label: {
+      color: colors.text,
+    },
+    detail: {
+      color: colors.textSecondary,
+    },
+    chip: {
+      alignSelf: 'flex-start',
+      paddingVertical: 2,
+      paddingHorizontal: spacing[2],
+      borderRadius: radius.pill,
+      backgroundColor: colors.primarySoft,
+    },
+    chipLabel: {
+      color: colors.primaryText,
+    },
+  });

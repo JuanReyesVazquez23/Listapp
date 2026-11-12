@@ -5,7 +5,8 @@ import { AppText } from '@/components/ui/AppText';
 import type { ShoppingItem } from '@/domain/item';
 import { es } from '@/strings/es';
 import { itemDetailText } from '@/lib/itemDetailText';
-import { colors, layout, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { layout, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface PurchaseItemRowProps {
   item: ShoppingItem;
@@ -19,6 +20,8 @@ interface PurchaseItemRowProps {
  * estado no dependa solo del color.
  */
 export function PurchaseItemRow({ item }: PurchaseItemRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const detailText = itemDetailText(item.detail);
 
   return (
@@ -61,31 +64,32 @@ export function PurchaseItemRow({ item }: PurchaseItemRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    minHeight: layout.minTouchTarget,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  textArea: {
-    flex: 1,
-  },
-  name: {
-    color: colors.text,
-  },
-  nameUnchecked: {
-    color: colors.textMuted,
-  },
-  tag: {
-    color: colors.textSecondary,
-    marginTop: spacing[1],
-  },
-  detail: {
-    color: colors.textSecondary,
-    marginTop: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      minHeight: layout.minTouchTarget,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
+      paddingVertical: spacing[2],
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    textArea: {
+      flex: 1,
+    },
+    name: {
+      color: colors.text,
+    },
+    nameUnchecked: {
+      color: colors.textMuted,
+    },
+    tag: {
+      color: colors.textSecondary,
+      marginTop: spacing[1],
+    },
+    detail: {
+      color: colors.textSecondary,
+      marginTop: spacing[1],
+    },
+  });

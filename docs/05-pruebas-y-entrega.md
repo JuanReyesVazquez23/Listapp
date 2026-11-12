@@ -71,6 +71,10 @@ La app tiene pocas pantallas, pero mucha responsabilidad sobre los datos. La est
   - ordena por precio y por precio por medida;
   - agrupa por libra, litro y unidad y deja al final las presentaciones sin medida;
   - recoge las marcas por frecuencia.
+- Tema (`src/theme/themeMode.ts`):
+  - la preferencia guardada manda sobre el esquema del sistema;
+  - sin preferencia se sigue el sistema y un valor desconocido se trata como ausencia;
+  - el toggle alterna claro y oscuro.
 
 ## 3. Pruebas de integración con `node:sqlite`
 
@@ -206,6 +210,7 @@ Se usa una base de datos temporal en archivo, no `:memory:`, para probar WAL y l
   - `isFinishing` bloquea el botón;
   - doble toque no lanza dos cierres.
 - Historial: agrupación y fila con fecha completa y fallback al nombre de la lista.
+- `ThemeToggleButton`: alterna claro→oscuro→claro, expone `accessibilityState.checked` y el `ThemeProvider` guarda la preferencia con `saveThemeMode`.
 
 RNTL no mide layout nativo. Los objetivos de 48 dp, la escala al 200 % y TalkBack se verifican en el checklist manual.
 
@@ -249,6 +254,8 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 10. Verificar historial: fecha, hora, nombre de la lista, “2 de 3 comprados”.
 11. Abrir detalle: “Huevos” en “Sin comprar”.
 12. Eliminar la compra y verificar que desaparece.
+13. Activar el tema oscuro con el toggle del header y comprobar que cambian fondo, textos y tabs.
+14. `killApp` y `launchApp` con `clearState: false`: el tema oscuro se conserva.
 
 ### 5.2 Flujo de recuperación
 
@@ -301,6 +308,7 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] “Reducir movimiento” respetado.
 - [ ] Errores no dependen solo del color.
 - [ ] Confirmaciones destructivas accesibles.
+- [ ] El toggle de tema se anuncia como interruptor con el modo actual y una etiqueta que dice a qué modo lleva.
 
 ### 6.4 Datos y errores
 
@@ -355,6 +363,14 @@ Se usan dos flujos. Los textos de entrada son ASCII para evitar el límite de `i
 - [ ] Volver a abrir un artículo ya valorado no repite la búsqueda ni pisa sus datos.
 - [ ] Cambiar de modo a mitad de compra no es posible; cancelar vuelve a borrador y limpia modo, detalle y total.
 
+### 6.6 Tema claro y oscuro
+
+- [ ] Sin preferencia guardada, la app sigue el esquema del sistema al abrir.
+- [ ] El toggle del header de las tabs cambia toda la interfaz: fondos, textos, headers, tabs, inputs, iconos, snackbars y estados.
+- [ ] La elección se conserva al cerrar y reabrir la app, y al cambiar el esquema del sistema después de elegir.
+- [ ] El texto y los iconos mantienen contraste AA en ambos temas, también en los estados deshabilitados y de error.
+- [ ] Los diálogos nativos (`Alert`) y el teclado siguen el tema del sistema operativo; se acepta como limitación conocida.
+
 ## 7. Node y reproducibilidad
 
 - Node **24.22.1** fijado en `.nvmrc` y `engines` (`>=24.22.1 <25`).
@@ -403,7 +419,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | `android.package` | `com.jeanx.listapp` (confirmado; D-01) |
 | `android.versionCode` | 1 |
 | `orientation` | `portrait` |
-| `userInterfaceStyle` | `light` |
+| `userInterfaceStyle` | `automatic` |
 | `android.allowBackup` | `false` |
 | `plugins` | `expo-router`, `expo-splash-screen` |
 | `experiments.typedRoutes` | `true` |
@@ -454,7 +470,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 | **M4 — Diseño y accesibilidad** | Pulido visual, icono/splash, TalkBack, 200 %, reduce motion, hápticos. | AC-13; checklist manual. |
 | **M5 — Pruebas y APK final** | E2E, migraciones, rendimiento, instalación limpia, checklist de release. | AC-12, AC-14 a AC-22; APK final. |
 
-**Estado:** M0, M1, M2 y M3 implementados. El cierre de compra es directo desde el modo compra, siempre con confirmación explícita y sin preguntar por el supermercado; las compras nuevas guardan `NULL` y la migración 003 conserva el dato de las antiguas. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, plegado de tildes y reintento en singular, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales, precio por libra, litro o unidad y resultados virtualizados. El teclado descuenta la altura del header nativo y el detalle de línea desplaza el campo enfocado; el panel de diagnóstico de base de datos se eliminó. Verificación local: `npx tsc --noEmit`, `npm run lint`, 35 suites / 267 pruebas en verde y `npx expo export --platform android` correcto. Backend de producción desplegado y verificado con `plátano`/`platano` (7 resultados), `platanos` (7) y `panes` (37). APK `preview` más reciente: build `b0fff7ad-50ef-4ae2-81bd-c2f964da0a54` (versionCode 6), disponible en EAS; no se descarga en la carpeta local. Queda pendiente de entrega: instalar el APK en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5.
+**Estado:** M0, M1, M2 y M3 implementados. El cierre de compra es directo desde el modo compra, siempre con confirmación explícita y sin preguntar por el supermercado; las compras nuevas guardan `NULL` y la migración 003 conserva el dato de las antiguas. La compra con La Sirena está implementada sobre la migración 002: modo de compra, detalle de línea, total, proxy Vercel, búsqueda automática, limpieza de cantidades, plegado de tildes y reintento en singular, imágenes por presentación, familia completa sin corte artificial, filtros y orden locales, precio por libra, litro o unidad y resultados virtualizados. El teclado descuenta la altura del header nativo y el detalle de línea desplaza el campo enfocado; el panel de diagnóstico de base de datos se eliminó. El tema claro/oscuro está implementado con tokens duales, `ThemeProvider`, toggle persistente en `expo-sqlite/kv-store` y `userInterfaceStyle: automatic`. Verificación local: `npx tsc --noEmit`, `npm run lint`, 37 suites / 274 pruebas en verde y `npx expo export --platform android` correcto. Backend de producción desplegado y verificado con `plátano`/`platano` (7 resultados), `platanos` (7) y `panes` (37). APK `preview` más reciente: build `b0fff7ad-50ef-4ae2-81bd-c2f964da0a54` (versionCode 6), disponible en EAS; no se descarga en la carpeta local. Queda pendiente de entrega: instalar el APK en un dispositivo físico, ejecutar los flujos E2E de Maestro y el checklist manual, incluida la sección 6.5, y validar visualmente el tema en los dos modos (sección 6.6).
 
 ## 11. Definición de terminado (MVP)
 
@@ -466,6 +482,7 @@ El repositorio está inicializado y conectado a GitHub (`JuanReyesVazquez23/List
 - Historial con fecha, hora, nombre de la compra y total de catálogo.
 - Compra normal idéntica a la versión anterior.
 - Catálogo con La Sirena: búsqueda automática, todas las presentaciones de la familia con imagen y fallback manual.
+- Tema claro/oscuro con toggle persistente; sin preferencia sigue el sistema y la elección sobrevive al reinicio.
 - TalkBack y texto al 200 % sin bloqueos.
 - Sin pérdida de datos en rollback, cierre forzado o migración fallida.
 - Documentación de decisiones y riesgos actualizada.

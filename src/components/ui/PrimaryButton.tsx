@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface PrimaryButtonProps {
   label: string;
@@ -19,6 +20,8 @@ export function PrimaryButton({
   icon,
   accessibilityHint,
 }: PrimaryButtonProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -45,29 +48,30 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing[2],
-  },
-  pressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  disabled: {
-    backgroundColor: colors.disabledBg,
-  },
-  label: {
-    color: colors.onPrimary,
-    textAlign: 'center',
-  },
-  disabledLabel: {
-    color: colors.disabledText,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    base: {
+      minHeight: 52,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: spacing[2],
+    },
+    pressed: {
+      backgroundColor: colors.primaryPressed,
+    },
+    disabled: {
+      backgroundColor: colors.disabledBg,
+    },
+    label: {
+      color: colors.onPrimary,
+      textAlign: 'center',
+    },
+    disabledLabel: {
+      color: colors.disabledText,
+    },
+  });

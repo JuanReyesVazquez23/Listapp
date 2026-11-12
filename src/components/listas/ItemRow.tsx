@@ -8,7 +8,8 @@ import type { ShoppingItem } from '@/domain/item';
 import { toUserMessage } from '@/lib/errorMessages';
 import { itemNameErrorMessage } from '@/lib/validationMessages';
 import { es } from '@/strings/es';
-import { colors, layout, radius, spacing, typography } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { layout, radius, spacing, typography, type ThemeColors } from '@/theme/tokens';
 
 interface ItemRowProps {
   item: ShoppingItem;
@@ -17,6 +18,8 @@ interface ItemRowProps {
 }
 
 export const ItemRow = memo(function ItemRow({ item, onRename, onDelete }: ItemRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.name);
   const [error, setError] = useState<string | null>(null);
@@ -138,49 +141,50 @@ export const ItemRow = memo(function ItemRow({ item, onRename, onDelete }: ItemR
   );
 });
 
-const styles = StyleSheet.create({
-  row: {
-    minHeight: layout.itemRowMinHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  nameArea: {
-    flex: 1,
-    minHeight: layout.itemRowMinHeight,
-    justifyContent: 'center',
-    paddingVertical: spacing[3],
-    paddingRight: spacing[2],
-  },
-  name: {
-    color: colors.text,
-  },
-  editContainer: {
-    paddingVertical: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  editRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-  },
-  input: {
-    flex: 1,
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing[3],
-    color: colors.text,
-    ...typography.body,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing[1],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    row: {
+      minHeight: layout.itemRowMinHeight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    nameArea: {
+      flex: 1,
+      minHeight: layout.itemRowMinHeight,
+      justifyContent: 'center',
+      paddingVertical: spacing[3],
+      paddingRight: spacing[2],
+    },
+    name: {
+      color: colors.text,
+    },
+    editContainer: {
+      paddingVertical: spacing[2],
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    editRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[1],
+    },
+    input: {
+      flex: 1,
+      minHeight: 44,
+      borderWidth: 1,
+      borderColor: colors.controlBorder,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing[3],
+      color: colors.text,
+      ...typography.body,
+    },
+    inputError: {
+      borderColor: colors.danger,
+    },
+    error: {
+      color: colors.danger,
+      marginTop: spacing[1],
+    },
+  });

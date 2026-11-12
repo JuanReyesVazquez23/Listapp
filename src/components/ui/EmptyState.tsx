@@ -4,7 +4,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { useTheme, useThemedStyles } from '@/theme/themeContext';
+import { radius, spacing, type ThemeColors } from '@/theme/tokens';
 
 interface EmptyStateProps {
   icon: ComponentProps<typeof Ionicons>['name'];
@@ -21,6 +22,9 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: EmptyStateProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.root}>
       <View style={styles.iconCircle}>
@@ -41,33 +45,34 @@ export function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[8],
-  },
-  iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.pill,
-    backgroundColor: colors.bgSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[5],
-  },
-  title: {
-    color: colors.text,
-    textAlign: 'center',
-  },
-  description: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing[2],
-    maxWidth: 320,
-  },
-  action: {
-    alignSelf: 'stretch',
-    marginTop: spacing[6],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    root: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing[8],
+    },
+    iconCircle: {
+      width: 88,
+      height: 88,
+      borderRadius: radius.pill,
+      backgroundColor: colors.bgSubtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing[5],
+    },
+    title: {
+      color: colors.text,
+      textAlign: 'center',
+    },
+    description: {
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[2],
+      maxWidth: 320,
+    },
+    action: {
+      alignSelf: 'stretch',
+      marginTop: spacing[6],
+    },
+  });
